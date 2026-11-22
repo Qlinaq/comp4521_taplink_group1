@@ -1,13 +1,18 @@
 package com.taplink.app.ui.theme
 
+import android.app.Activity
+import android.content.ContextWrapper
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import androidx.core.view.WindowCompat
 import com.taplink.app.domain.ThemeMode
 
 val Ocean = Color(0xFF1266D6)
@@ -43,5 +48,19 @@ private val Type = Typography(
 @Composable
 fun TapLinkTheme(mode: ThemeMode, content: @Composable () -> Unit) {
     val dark = when (mode) { ThemeMode.SYSTEM -> isSystemInDarkTheme(); ThemeMode.DARK -> true; else -> false }
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        SideEffect {
+            val activity = generateSequence(view.context) { (it as? ContextWrapper)?.baseContext }
+                .filterIsInstance<Activity>().firstOrNull()
+            activity?.window?.let { window ->
+                // The app can choose a different theme from Android's system setting.
+                WindowCompat.getInsetsController(window, view).apply {
+                    isAppearanceLightStatusBars = !dark
+                    isAppearanceLightNavigationBars = !dark
+                }
+            }
+        }
+    }
     MaterialTheme(colorScheme = if (dark) Dark else Light, typography = Type, content = content)
 }
