@@ -14,6 +14,10 @@ TapLink is an English-language Android educational prototype inspired by integra
 - Spending totals count debit entries and exclude top-ups/reloads/subsidy credits.
 - Demo data is initialized once; refresh and restart preserve user changes.
 
+Ledger rows have a persisted insertion sequence, so equal timestamps cannot put a payment ahead of its subsequent reload. Settings updates apply a transformation to the latest stored preferences inside the transaction; changing visibility must not restore an older selected card.
+
+Cancellation before a successful commit rolls back that transaction. Cancellation while a committed result is being delivered is an uncertain outcome, not proof of failure. The original operation ID must be retained and reconciled through its stored receipt or a same-ID retry. A new ID represents a new intended transaction.
+
 ## Android behavior
 
 Room is the local source of truth. Core wallet workflows work without network connectivity. UI state must survive rotation; hardware and permission-dependent features have manual alternatives. Notifications remain available in the in-app inbox when system delivery is unavailable. Background reminders are deferrable and do not promise exact timing.

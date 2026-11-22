@@ -34,6 +34,8 @@ See [API_CONTRACT.md](API_CONTRACT.md) before changing persistence or transactio
 
 ## Verification
 
+Recorded local result: **51 unit tests + 29 Android instrumentation tests passed; lint: 0 errors, 0 warnings.** See the [verification record](docs/VERIFICATION.md) for the tested APK hash, actual device workflow, environment and limits.
+
 ```sh
 bash ./gradlew testDebugUnitTest lintDebug assembleDebug
 # With a connected emulator/device:
@@ -45,7 +47,10 @@ Windows users may run `tools/verify.ps1` (optionally `-DeviceTests`). GitHub Act
 ## Team handoff
 
 - [Setup and contribution guide](docs/TEAM_HANDOFF.md)
+- [Proposal feature map and implementation limits](docs/FEATURE_STATUS.md)
+- [Screenshots of the running app](docs/SCREENSHOTS.md)
 - [Demonstration script](docs/DEMO_SCRIPT.md)
+- [Final report draft for team review](docs/FINAL_REPORT_DRAFT.md)
 - [Course delivery requirements](docs/COURSE_REQUIREMENTS.md)
 - [Implementation decisions](docs/DEVELOPMENT_DECISIONS.md)
 - [Generative AI acknowledgement](docs/AI_USE.md)

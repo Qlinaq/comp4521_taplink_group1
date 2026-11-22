@@ -1,0 +1,30 @@
+{
+  "card": {
+    "id": "ad3fdbc9-f88d-485f-a5b2-276f13328aa5",
+    "name": "Showcase",
+    "balanceCents": 12000,
+    "isFrozen": 0
+  },
+  "ledger": [
+    {
+      "type": "TOP_UP",
+      "amountCents": 10000,
+      "balanceAfterCents": 10000,
+      "ledgerSequence": 12
+    },
+    {
+      "type": "PAYMENT",
+      "amountCents": 3000,
+      "balanceAfterCents": 7000,
+      "ledgerSequence": 13
+    },
+    {
+      "type": "AUTO_RELOAD",
+      "amountCents": 5000,
+      "balanceAfterCents": 12000,
+      "ledgerSequence": 14
+    }
+  ],
+  "integrity": "ok",
+  "method": "Read-only copy after force-stop; all money changes were made through UI."
+}

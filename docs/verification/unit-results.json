@@ -1,0 +1,50 @@
+[
+  {
+    "name": "com.taplink.app.domain.MoneyTest",
+    "tests": "3",
+    "failures": "0",
+    "errors": "0",
+    "skipped": "0",
+    "time": "0.057"
+  },
+  {
+    "name": "com.taplink.app.domain.WalletAnalyticsTest",
+    "tests": "6",
+    "failures": "0",
+    "errors": "0",
+    "skipped": "0",
+    "time": "0.066"
+  },
+  {
+    "name": "com.taplink.app.domain.WalletRulesTest",
+    "tests": "14",
+    "failures": "0",
+    "errors": "0",
+    "skipped": "0",
+    "time": "0.05"
+  },
+  {
+    "name": "com.taplink.app.platform.PlatformPoliciesTest",
+    "tests": "9",
+    "failures": "0",
+    "errors": "0",
+    "skipped": "0",
+    "time": "0.042"
+  },
+  {
+    "name": "com.taplink.app.platform.ShakeDetectorTest",
+    "tests": "5",
+    "failures": "0",
+    "errors": "0",
+    "skipped": "0",
+    "time": "0.002"
+  },
+  {
+    "name": "com.taplink.app.ui.WalletViewModelTest",
+    "tests": "14",
+    "failures": "0",
+    "errors": "0",
+    "skipped": "0",
+    "time": "0.485"
+  }
+]

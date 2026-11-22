@@ -10,6 +10,8 @@
 
 The handoff APK can also be installed directly. All wallet data is local to that installation. No backend credentials or payment accounts are needed. A permission denial should not block core wallet use.
 
+Start with [the demo script](DEMO_SCRIPT.md), [verified results](VERIFICATION.md), and [feature boundaries](FEATURE_STATUS.md). The source ZIP includes these documents, the report draft and screenshots. The supplied APK is a debug demonstration build; a teammate building with a different debug signing key may need to uninstall the existing demo installation first, which removes its local data.
+
 ## Code map
 
 | Area | Location | Responsibilities |
@@ -26,6 +28,8 @@ The handoff APK can also be installed directly. All wallet data is local to that
 Create a branch for a concrete improvement, for example `ui/home-polish` or `fix/history-filter`. Keep money mutations in the repository. Give your AI tool the repository contract and the specific expected behavior, then inspect the diff and run the relevant checks. Avoid replacing a working subsystem simply to change its appearance.
 
 On Windows, `powershell -ExecutionPolicy Bypass -File tools/verify.ps1` runs build, unit tests and lint. Add `-DeviceTests` with a ready emulator for instrumentation tests. On other systems run `bash ./gradlew testDebugUnitTest lintDebug assembleDebug` and optionally `connectedDebugAndroidTest`.
+
+If the Gradle device-test infrastructure has not been downloaded, the same instrumentation suite can run directly after `assembleDebugAndroidTest`: install both generated APKs with `adb install -r`, then run `adb shell am instrument -w -r com.taplink.app.test/androidx.test.runner.AndroidJUnitRunner`. This is the route used for the recorded local 29-test result.
 
 Use a pull request to describe the trigger, resulting behavior and verification. Keep `main` demonstrable. No global Java, BIOS or virtualization changes are part of the project setup.
 
