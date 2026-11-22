@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="taplink_widget_brand" translatable="false">TAPLINK</string>
+    <string name="taplink_widget_card_placeholder">Your TapLink card</string>
+    <string name="taplink_widget_no_card">No card selected</string>
+    <string name="taplink_widget_balance_hidden">Balance hidden</string>
+    <string name="taplink_widget_demo_status">Simulated HKD · Demo card</string>
+    <string name="taplink_widget_open_dashboard">Open dashboard →</string>
+</resources>
