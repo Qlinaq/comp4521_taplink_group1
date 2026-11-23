@@ -19,6 +19,7 @@ class TapLinkWidgetRefreshWorker(context: Context, params: WorkerParameters) : C
 class TapLinkReminderWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result = guarded {
         val repository = TapLinkContainer.repository(applicationContext)
+        repository.useOwner(TapLinkContainer.activeOwner(applicationContext))
         repository.initialize()
         val prefs = repository.preferences.first()
         if (ReminderPolicy.workEnabled(prefs)) {
@@ -34,6 +35,7 @@ class TapLinkReminderWorker(context: Context, params: WorkerParameters) : Corout
 class TapLinkContentRefreshWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result = guarded {
         val repository = TapLinkContainer.repository(applicationContext)
+        repository.useOwner(TapLinkContainer.activeOwner(applicationContext))
         repository.initialize()
         if (!repository.preferences.first().demoRefreshEnabled) return@guarded Result.success()
         if (repository.refreshDemoContent() is WalletResult.Error) return@guarded retryOrFail()

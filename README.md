@@ -2,7 +2,7 @@
 
 **Hong Kong Public Electronic Payment and Stored Value System-TapLink**
 
-An English-language Android educational prototype for simulated stored-value cards, top-ups, merchant payments, spending insights and nearby service discovery. All balances and transactions are simulated; no bank, Octopus or FPS connection is used.
+An Android educational prototype for simulated stored-value cards, top-ups, merchant payments, spending insights and nearby service discovery, in English, Traditional Chinese and Simplified Chinese. Accounts (sign-up, sign-in by email or Hong Kong phone number, password reset, session gate) run locally with hashed credentials and a simulated code inbox. A public-service round adds notification settings with per-category switches, a contact screen (WhatsApp 2520 1314, hotline, AI chat, sign-language chapters), an accessibility and elderly-friendly mode (150% text, high contrast, read-aloud, simplified flow) and swipeable home cards. All balances and transactions are simulated; no bank, Octopus or FPS connection is used.
 
 ## Run
 
@@ -22,10 +22,16 @@ Install `app/build/outputs/apk/debug/app-debug.apk`. The initial local database 
 
 ```text
 app/src/main/java/com/taplink/app/
-  domain/       Models, money rules, analytics and repository contract
+  domain/       Models, money rules, analytics, auth rules/crypto and repository contracts
+  domain/auth/  Identifier rules, password hashing, OTP and lockout policies
   data/         Room database, seed catalogue and transactional repository
-  ui/           Compose screens, retained state and custom spending chart
-  platform/     Android notifications, workers, widget, location and sensors
+  data/auth/    Account and verification-code tables, Room auth repository, session store
+  ui/           Compose screens, retained state, custom spending chart, localisation
+  ui/auth/      Welcome, sign-in/up, verification, reset and the Settings account section
+  ui/settings/  Notification, accessibility and contact screens
+  ui/support/   AI text support chat and the sign-language chapters
+  data/support/ Quota, prompt rules, offline FAQ matcher and the DeepSeek client
+  platform/     Android notifications, workers, widget, location, sensors, speech
 docs/           Course requirements, demo guide, AI acknowledgement and handoff
 tools/          Local verification and clean handoff packaging
 ```
@@ -34,7 +40,7 @@ See [API_CONTRACT.md](API_CONTRACT.md) before changing persistence or transactio
 
 ## Verification
 
-Recorded local result: **51 unit tests + 29 Android instrumentation tests passed; lint: 0 errors, 0 warnings.** See the [verification record](docs/VERIFICATION.md) for the tested APK hash, actual device workflow, environment and limits.
+Recorded local result: **94 unit tests + 49 Android instrumentation tests passed; lint: 0 errors (51 advisory warnings).** See the [verification record](docs/VERIFICATION.md) for all three verification rounds, the tested environment and the stated limits.
 
 ```sh
 bash ./gradlew testDebugUnitTest lintDebug assembleDebug
@@ -48,6 +54,8 @@ Windows users may run `tools/verify.ps1` (optionally `-DeviceTests`). GitHub Act
 
 - [Setup and contribution guide](docs/TEAM_HANDOFF.md)
 - [Proposal feature map and implementation limits](docs/FEATURE_STATUS.md)
+- [Accounts, sessions and interface language: design and limits](docs/AUTH_DESIGN.md)
+- [Accessibility, notifications and AI support: what is claimed and what is not](docs/ACCESSIBILITY.md)
 - [Screenshots of the running app](docs/SCREENSHOTS.md)
 - [Demonstration script](docs/DEMO_SCRIPT.md)
 - [Final report draft for team review](docs/FINAL_REPORT_DRAFT.md)

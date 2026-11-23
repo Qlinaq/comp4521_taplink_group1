@@ -33,11 +33,30 @@ class PlatformPoliciesTest {
     }
 
     @Test fun disabledMasterOrTypeNeverNotifies() {
-        assertFalse(ReminderPolicy.allowed(message(), AppPreferences(remindersEnabled = false), now))
+        assertFalse(ReminderPolicy.allowed(message(), AppPreferences(notificationsEnabled = false), now))
         assertFalse(ReminderPolicy.allowed(message(), AppPreferences(lowBalanceAlerts = false), now))
         assertFalse(ReminderPolicy.allowed(message(type = MessageType.PASS_EXPIRY), AppPreferences(expiryRemindersEnabled = false), now))
         assertFalse(ReminderPolicy.allowed(message(type = MessageType.INFO), AppPreferences(), now))
         assertTrue(ReminderPolicy.allowed(message(type = MessageType.OFFER_EXPIRY), AppPreferences(), now))
+    }
+
+    /** A scheduled job and an instant alert are different promises, so they stay separate switches. */
+    @Test fun scheduledRemindersAndInstantAlertsAreIndependent() {
+        val noJob = AppPreferences(remindersEnabled = false)
+        assertTrue(ReminderPolicy.allowed(message(), noJob, now))
+        assertFalse(ReminderPolicy.workEnabled(noJob))
+        assertFalse(ReminderPolicy.workEnabled(AppPreferences(notificationsEnabled = false)))
+    }
+
+    @Test fun eachCategoryHasItsOwnSwitch() {
+        val transaction = message(type = MessageType.TRANSACTION)
+        assertTrue(ReminderPolicy.allowed(transaction, AppPreferences(), now))
+        assertFalse(ReminderPolicy.allowed(transaction, AppPreferences(transactionAlerts = false), now))
+        assertFalse(ReminderPolicy.allowed(message(type = MessageType.OFFER_EXPIRY), AppPreferences(offerAlerts = false), now))
+        assertFalse(ReminderPolicy.allowed(message(type = MessageType.SERVICE), AppPreferences(serviceAnnouncements = false), now))
+        assertTrue(ReminderPolicy.allowed(message(type = MessageType.SERVICE), AppPreferences(), now))
+        // Turning off offers must not silence pass expiry, which the old build coupled together.
+        assertTrue(ReminderPolicy.allowed(message(type = MessageType.PASS_EXPIRY), AppPreferences(offerAlerts = false), now))
     }
 
     @Test fun oldReadOrFutureMessagesDoNotNotify() {
@@ -60,7 +79,10 @@ class PlatformPoliciesTest {
 
     @Test fun schedulingStopsWhenAllReminderTypesAreDisabled() {
         assertFalse(ReminderPolicy.workEnabled(AppPreferences(remindersEnabled = false)))
-        assertFalse(ReminderPolicy.workEnabled(AppPreferences(lowBalanceAlerts = false, expiryRemindersEnabled = false)))
+        assertFalse(ReminderPolicy.workEnabled(AppPreferences(
+            lowBalanceAlerts = false, expiryRemindersEnabled = false,
+            transactionAlerts = false, offerAlerts = false
+        )))
         assertTrue(ReminderPolicy.workEnabled(AppPreferences(lowBalanceAlerts = false)))
     }
 

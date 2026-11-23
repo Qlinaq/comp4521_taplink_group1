@@ -22,6 +22,12 @@ interface TapLinkRepository {
     val subsidyClaims: Flow<List<SubsidyClaim>>
 
     suspend fun initialize()
+
+    /**
+     * Selects whose wallet the flows and mutations below operate on. Called once when the wallet
+     * shell is created for a session, so a different account never reads the previous one's rows.
+     */
+    fun useOwner(ownerId: String)
     suspend fun createCard(name: String): WalletResult<Card>
     suspend fun renameCard(cardId: String, name: String): WalletResult<Unit>
     suspend fun setCardFrozen(cardId: String, frozen: Boolean): WalletResult<Unit>

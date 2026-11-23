@@ -9,3 +9,6 @@ local.properties
 captures/
 .DS_Store
 __pycache__/
+
+# WorkBuddy project data (session logs, memory) — never part of the deliverable.
+.workbuddy/

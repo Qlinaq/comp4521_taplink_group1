@@ -271,6 +271,7 @@ private class DelayedRepository : TapLinkRepository {
         WalletResult.Success(receipts.getOrPut(id) { fixtureReceipt(id, card, amount) })
     }
     override suspend fun initialize() = Unit
+    override fun useOwner(ownerId: String) = Unit
     override suspend fun selectCard(cardId: String): WalletResult<Unit> { committed = committed.copy(selectedCardId = cardId); return WalletResult.Success(Unit) }
     override suspend fun transformPreferences(change: (AppPreferences) -> AppPreferences): WalletResult<Unit> { committed = change(committed); return WalletResult.Success(Unit) }
     override suspend fun updatePreferences(preferences: AppPreferences): WalletResult<Unit> { snapshotWrites++; committed = preferences; return WalletResult.Success(Unit) }

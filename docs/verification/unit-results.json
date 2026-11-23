@@ -1,11 +1,27 @@
 [
   {
+    "name": "com.taplink.app.LocalizationParityTest",
+    "tests": "4",
+    "failures": "0",
+    "errors": "0",
+    "skipped": "0",
+    "time": "0.136"
+  },
+  {
+    "name": "com.taplink.app.data.support.SupportAssistantTest",
+    "tests": "8",
+    "failures": "0",
+    "errors": "0",
+    "skipped": "0",
+    "time": "0.075"
+  },
+  {
     "name": "com.taplink.app.domain.MoneyTest",
     "tests": "3",
     "failures": "0",
     "errors": "0",
     "skipped": "0",
-    "time": "0.057"
+    "time": "0.006"
   },
   {
     "name": "com.taplink.app.domain.WalletAnalyticsTest",
@@ -13,7 +29,7 @@
     "failures": "0",
     "errors": "0",
     "skipped": "0",
-    "time": "0.066"
+    "time": "0.035"
   },
   {
     "name": "com.taplink.app.domain.WalletRulesTest",
@@ -21,15 +37,31 @@
     "failures": "0",
     "errors": "0",
     "skipped": "0",
-    "time": "0.05"
+    "time": "0.02"
   },
   {
-    "name": "com.taplink.app.platform.PlatformPoliciesTest",
-    "tests": "9",
+    "name": "com.taplink.app.domain.auth.AuthRulesTest",
+    "tests": "17",
     "failures": "0",
     "errors": "0",
     "skipped": "0",
-    "time": "0.042"
+    "time": "0.006"
+  },
+  {
+    "name": "com.taplink.app.domain.auth.PasswordHasherTest",
+    "tests": "12",
+    "failures": "0",
+    "errors": "0",
+    "skipped": "0",
+    "time": "0.066"
+  },
+  {
+    "name": "com.taplink.app.platform.PlatformPoliciesTest",
+    "tests": "11",
+    "failures": "0",
+    "errors": "0",
+    "skipped": "0",
+    "time": "0.006"
   },
   {
     "name": "com.taplink.app.platform.ShakeDetectorTest",
@@ -37,7 +69,7 @@
     "failures": "0",
     "errors": "0",
     "skipped": "0",
-    "time": "0.002"
+    "time": "0.0"
   },
   {
     "name": "com.taplink.app.ui.WalletViewModelTest",
@@ -45,6 +77,6 @@
     "failures": "0",
     "errors": "0",
     "skipped": "0",
-    "time": "0.485"
+    "time": "0.114"
   }
 ]

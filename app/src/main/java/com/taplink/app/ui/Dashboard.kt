@@ -1,6 +1,5 @@
 package com.taplink.app.ui
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -8,13 +7,11 @@ import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.taplink.app.R
 import com.taplink.app.domain.*
 
 @Composable
@@ -27,70 +24,83 @@ fun Dashboard(vm: WalletViewModel) {
     val dialog by vm.cardDialog.collectAsStateWithLifecycle()
     val name by vm.cardDialogName.collectAsStateWithLifecycle()
     val card = selected
+    val simple = prefs.elderlyMode
     ScreenColumn {
-        PageHeading("Your everyday wallet", "A little tap. A lot closer.", "Everything you need for your next stop.")
+        // Hero form: the greeting sits on a tinted card with a pill eyebrow, so the first thing on
+        // the screen is a surface instead of bare text. The standard greeting is two lines only —
+        // the tagline under it was removed because the first card already says what the app is for;
+        // the simplified (elderly) greeting keeps its explanatory line.
+        PageHeading(
+            eyebrow = stringResource(if (simple) R.string.home_simple_eyebrow else R.string.ui_your_everyday_wallet),
+            title = stringResource(if (simple) R.string.home_simple_title else R.string.ui_a_little_tap_a_lot_closer),
+            subtitle = if (simple) stringResource(R.string.home_simple_subtitle) else null,
+            hero = true
+        )
+        if (simple) ModeBanner(stringResource(R.string.a11y_mode_active))
         if (card != null) {
-            Box(Modifier.fillMaxWidth().background(Brush.linearGradient(listOf(Color(0xFF1457B5), Color(0xFF087F91))), RoundedCornerShape(26.dp)).padding(24.dp)) {
-                Column(verticalArrangement = Arrangement.spacedBy(17.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Outlined.Contactless, null, tint = Color.White, modifier = Modifier.size(30.dp))
-                        Spacer(Modifier.width(10.dp))
-                        Text("TapLink", color = Color.White, style = MaterialTheme.typography.titleLarge)
-                        Spacer(Modifier.weight(1f))
-                        Surface(color = Color.White.copy(alpha = 0.16f), shape = RoundedCornerShape(50)) { Text(if (card.isFrozen) "FROZEN" else "DEMO CARD", Modifier.padding(horizontal = 10.dp, vertical = 6.dp), style = MaterialTheme.typography.labelSmall, color = Color.White) }
-                    }
-                    Column {
-                        Text("Available balance · HKD", color = Color.White.copy(alpha = .8f), style = MaterialTheme.typography.bodySmall)
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(if (prefs.balanceVisible) Money.format(card.balanceCents) else "HK$ ••••", Modifier.weight(1f), color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Bold, maxLines = 2)
-                            IconButton(onClick = { vm.updatePreferences { it.copy(balanceVisible = !it.balanceVisible) } }, enabled = !busy) { Icon(if (prefs.balanceVisible) Icons.Outlined.Visibility else Icons.Outlined.VisibilityOff, if (prefs.balanceVisible) "Hide balance" else "Show balance", tint = Color.White) }
-                        }
-                    }
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text(card.name, Modifier.weight(1f), color = Color.White, style = MaterialTheme.typography.titleMedium)
-                        Text(card.maskedNumber, color = Color.White.copy(alpha = .85f), style = MaterialTheme.typography.bodyMedium)
-                    }
+            VoiceSummary(
+                buildString {
+                    append(stringResource(R.string.home_voice_card, card.name))
+                    if (prefs.balanceVisible) append(stringResource(R.string.home_voice_balance, Money.format(card.balanceCents)))
+                    if (card.isFrozen) append(stringResource(R.string.home_voice_frozen))
+                    else if (card.balanceCents < prefs.lowBalanceThresholdCents) append(stringResource(R.string.home_voice_low))
+                }
+            )
+            CardPager(
+                cards = cards,
+                selected = card,
+                prefs = prefs,
+                busy = busy,
+                onSelect = { page -> vm.act(action = { vm.repository.selectCard(page.id) }) },
+                onToggleBalance = { vm.updatePreferences { it.copy(balanceVisible = !it.balanceVisible) } }
+            )
+            if (!simple) ChoiceField( stringResource(R.string.ui_current_card) , card.id, cards.map { it.id to "${it.name}${if (it.isFrozen) " · Frozen" else ""}" }, { vm.act(action = { vm.repository.selectCard(it) }) }, !busy)
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                val buttonHeight = if (simple) 76.dp else 54.dp
+                Button({ vm.startOperation("TOPUP") }, Modifier.weight(1f).heightIn(min = buttonHeight), enabled = !busy, shape = RoundedCornerShape(16.dp)) {
+                    Icon(Icons.Outlined.Add, null, Modifier.size(if (simple) 26.dp else 20.dp)); Spacer(Modifier.width(6.dp)); Text(stringResource(R.string.ui_top_up), style = if (simple) MaterialTheme.typography.titleMedium else LocalTextStyle.current)
+                }
+                FilledTonalButton({ vm.startOperation("PAYMENT") }, Modifier.weight(1f).heightIn(min = buttonHeight), enabled = !busy, shape = RoundedCornerShape(16.dp)) {
+                    Icon(Icons.Outlined.NorthEast, null, Modifier.size(if (simple) 26.dp else 20.dp)); Spacer(Modifier.width(6.dp)); Text(stringResource(R.string.ui_pay), style = if (simple) MaterialTheme.typography.titleMedium else LocalTextStyle.current)
                 }
             }
-            ChoiceField("Current card", card.id, cards.map { it.id to "${it.name}${if (it.isFrozen) " · Frozen" else ""}" }, { vm.act(action = { vm.repository.selectCard(it) }) }, !busy)
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Button({ vm.startOperation("TOPUP") }, Modifier.weight(1f).heightIn(min = 54.dp), enabled = !busy, shape = RoundedCornerShape(16.dp)) { Icon(Icons.Outlined.Add, null); Spacer(Modifier.width(6.dp)); Text("Top up") }
-                FilledTonalButton({ vm.startOperation("PAYMENT") }, Modifier.weight(1f).heightIn(min = 54.dp), enabled = !busy, shape = RoundedCornerShape(16.dp)) { Icon(Icons.Outlined.NorthEast, null); Spacer(Modifier.width(6.dp)); Text("Pay") }
-            }
-            if (card.isFrozen) Notice("This card is frozen. Unfreeze it to top up, pay, or buy a demo pass.")
-            else if (card.balanceCents < prefs.lowBalanceThresholdCents) Notice("Your balance is running low. A demo top-up can keep your day moving.")
-            Panel {
-                SectionHeading("Your card, your control")
+            if (card.isFrozen) Notice( stringResource(R.string.ui_this_card_is_frozen_unfreeze_it_to_top_up_pa) )
+            else if (card.balanceCents < prefs.lowBalanceThresholdCents) Notice( stringResource(R.string.ui_your_balance_is_running_low_a_demo_top_up_ca) )
+            // With the simplified flow on, card management stays reachable in Settings but is not
+            // pushed at a user who only wants to pay.
+            if (!simple) Panel {
+                SectionHeading( stringResource(R.string.ui_your_card_your_control) )
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                    TextButton({ vm.openCardDialog("create") }, enabled = !busy) { Icon(Icons.Outlined.AddCard, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("New") }
-                    TextButton({ vm.openCardDialog("rename", card) }, enabled = !busy) { Icon(Icons.Outlined.Edit, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("Rename") }
-                    TextButton({ vm.openCardDialog(if (card.isFrozen) "unfreeze" else "freeze", card) }, enabled = !busy) { Icon(Icons.Outlined.Lock, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text(if (card.isFrozen) "Unfreeze" else "Freeze") }
+                    TextButton({ vm.openCardDialog("create") }, enabled = !busy) { Icon(Icons.Outlined.AddCard, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text(stringResource(R.string.ui_new)) }
+                    TextButton({ vm.openCardDialog("rename", card) }, enabled = !busy) { Icon(Icons.Outlined.Edit, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text(stringResource(R.string.ui_rename)) }
+                    TextButton({ vm.openCardDialog(if (card.isFrozen) "unfreeze" else "freeze", card) }, enabled = !busy) { Icon(Icons.Outlined.Lock, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text(if (card.isFrozen) stringResource(R.string.ui_unfreeze) else stringResource(R.string.ui_freeze)) }
                 }
             }
         } else {
-            EmptyState("Your first card starts here", "Create a demo card and add simulated funds.", Icons.Outlined.CreditCard)
-            PrimaryButton("Create a card", !busy) { vm.openCardDialog("create") }
+            EmptyState( stringResource(R.string.ui_your_first_card_starts_here) , stringResource(R.string.ui_create_a_demo_card_and_add_simulated_funds) , Icons.Outlined.CreditCard)
+            PrimaryButton( stringResource(R.string.ui_create_a_card) , !busy) { vm.openCardDialog("create") }
         }
         Panel {
-            SectionHeading("Recent activity", "View all") { vm.root("Activity") }
-            val recent = transactions.filter { it.cardId == card?.id }.take(4)
-            if (recent.isEmpty()) EmptyState("Ready for your first tap", "Top-ups and payments will appear here.")
+            SectionHeading( stringResource(R.string.ui_recent_activity) , stringResource(R.string.ui_view_all) ) { vm.root("Activity") }
+            val recent = transactions.filter { it.cardId == card?.id }.take(if (simple) 3 else 4)
+            if (recent.isEmpty()) EmptyState( stringResource(R.string.ui_ready_for_your_first_tap) , stringResource(R.string.ui_top_ups_and_payments_will_appear_here) )
             recent.forEach { TransactionRow(it) { vm.openTransaction(it) } }
         }
-        Text("Educational prototype · Simulated balances and payments only", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (simple) NavigationRow(Icons.Outlined.SupportAgent, stringResource(R.string.a11y_contact_support), stringResource(R.string.a11y_contact_support_body)) { vm.navigate("Contact") }
+        Text(stringResource(R.string.ui_educational_prototype_simulated_balances_and), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
     if (dialog.isNotBlank()) {
         val editing = dialog == "create" || dialog == "rename"
         AlertDialog(
             onDismissRequest = vm::dismissCardDialog,
             icon = { Icon(if (editing) Icons.Outlined.CreditCard else Icons.Outlined.Lock, null) },
-            title = { Text(when (dialog) { "create" -> "Create a demo card"; "rename" -> "Rename card"; "freeze" -> "Freeze this card?"; else -> "Unfreeze this card?" }) },
+            title = { Text(when (dialog) { "create" -> stringResource(R.string.ui_create_a_demo_card); "rename" -> stringResource(R.string.ui_rename_card); "freeze" -> stringResource(R.string.ui_freeze_this_card); else -> stringResource(R.string.ui_unfreeze_this_card) }) },
             text = {
-                if (editing) OutlinedTextField(name, vm::editCardDialogName, label = { Text("Card name") }, singleLine = true, supportingText = { Text("Choose a name, such as Campus or Weekend.") }, enabled = !busy)
-                else Text(if (dialog == "freeze") "Top-ups, payments and pass purchases will be blocked until you unfreeze it. Your balance stays safe." else "This card will be able to make simulated transactions again.")
+                if (editing) OutlinedTextField(name, vm::editCardDialogName, label = { Text(stringResource(R.string.ui_card_name)) }, singleLine = true, supportingText = { Text(stringResource(R.string.ui_choose_a_name_such_as_campus_or_weekend)) }, enabled = !busy)
+                else Text(if (dialog == "freeze") stringResource(R.string.ui_top_ups_payments_and_pass_purchases_will_be) else stringResource(R.string.ui_this_card_will_be_able_to_make_simulated_tra))
             },
-            confirmButton = { TextButton(enabled = !busy && (!editing || name.isNotBlank()), onClick = vm::submitCardDialog) { Text(if (busy) "Saving…" else "Confirm") } },
-            dismissButton = { TextButton(vm::dismissCardDialog, enabled = !busy) { Text("Cancel") } }
+            confirmButton = { TextButton(enabled = !busy && (!editing || name.isNotBlank()), onClick = vm::submitCardDialog) { Text(if (busy) stringResource(R.string.ui_saving) else stringResource(R.string.ui_confirm)) } },
+            dismissButton = { TextButton(vm::dismissCardDialog, enabled = !busy) { Text(stringResource(R.string.account_cancel)) } }
         )
     }
 }

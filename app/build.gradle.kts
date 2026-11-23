@@ -1,9 +1,26 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.ksp)
 }
+
+/**
+ * The support assistant key is a demo credential. It is read from `local.properties`, which is
+ * git-ignored, so it never enters the repository or the report. Anyone who has the APK can still
+ * extract it, so the app also caps spend per day and falls back to an offline FAQ. A production
+ * build must call our own backend instead of DeepSeek directly.
+ */
+val localProperties = Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.exists()) file.inputStream().use(::load)
+}
+
+fun buildConfigValue(name: String, fallback: String = ""): String =
+    (localProperties.getProperty(name) ?: System.getenv(name) ?: fallback)
+        .replace("\\", "\\\\").replace("\"", "\\\"")
 
 android {
     namespace = "com.taplink.app"
@@ -16,6 +33,11 @@ android {
         versionCode = 1
         versionName = "1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Empty by default: the support screen then explains that the assistant is not configured
+        // and offers WhatsApp plus the offline FAQ instead of failing silently.
+        buildConfigField("String", "DEEPSEEK_API_KEY", "\"${buildConfigValue("DEEPSEEK_API_KEY")}\"")
+        buildConfigField("String", "DEEPSEEK_MODEL", "\"${buildConfigValue("DEEPSEEK_MODEL", "deepseek-flash")}\"")
     }
 
     compileOptions {
@@ -23,7 +45,7 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions { jvmTarget = "17" }
-    buildFeatures { compose = true }
+    buildFeatures { compose = true; buildConfig = true }
     packaging { resources.excludes += "/META-INF/{AL2.0,LGPL2.1}" }
 }
 
@@ -34,6 +56,7 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.runtime.livedata)
+    implementation(libs.androidx.foundation)
     implementation(libs.androidx.ui)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)

@@ -24,6 +24,7 @@ object TapLinkPlatform {
         if (started) return
         val app = context.applicationContext
         val repository = TapLinkContainer.repository(app)
+        repository.useOwner(TapLinkContainer.activeOwner(app))
         TapLinkNotifications.createChannel(app)
         started = true
         scope.launch {

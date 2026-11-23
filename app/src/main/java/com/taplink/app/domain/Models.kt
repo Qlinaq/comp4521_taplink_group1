@@ -1,5 +1,6 @@
 package com.taplink.app.domain
 
+import androidx.room.ColumnInfo
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -8,7 +9,17 @@ enum class TransactionType { PAYMENT, TOP_UP, AUTO_RELOAD, PASS_PURCHASE, SUBSID
 enum class Category { TRANSPORT, FOOD, SHOPPING, SERVICES, OTHER }
 enum class LocationType { TOP_UP, MERCHANT, TRANSPORT }
 enum class ThemeMode { SYSTEM, LIGHT, DARK }
-enum class MessageType { INFO, LOW_BALANCE, PASS_EXPIRY, OFFER_EXPIRY }
+enum class MessageType { INFO, LOW_BALANCE, PASS_EXPIRY, OFFER_EXPIRY, TRANSACTION, SERVICE }
+
+/**
+ * Structured message identity. Stored titles and bodies are English sample content, so a screen in
+ * Chinese would otherwise mix languages. When [MessageKind] is present the UI renders localised
+ * text from resources; legacy rows fall back to their stored text.
+ */
+enum class MessageKind {
+    WELCOME, LOW_BALANCE, TOP_UP, PAYMENT, PASS_PURCHASE, PASS_EXPIRY, OFFER_EXPIRY, SERVICE
+}
+
 enum class WalletError {
     INVALID_AMOUNT, INVALID_NAME, INVALID_PREFERENCES, NOT_FOUND, CARD_FROZEN,
     INSUFFICIENT_BALANCE, BALANCE_LIMIT, IDEMPOTENCY_CONFLICT, INVALID_OPERATION_ID,
@@ -71,6 +82,7 @@ data class Receipt(
 data class AppPreferences(
     val selectedCardId: String? = null,
     val theme: ThemeMode = ThemeMode.SYSTEM,
+    @ColumnInfo(defaultValue = "ENGLISH") val language: AppLanguage = AppLanguage.ENGLISH,
     val balanceVisible: Boolean = true,
     val widgetBalanceVisible: Boolean = false,
     val lowBalanceAlerts: Boolean = true,
@@ -82,13 +94,27 @@ data class AppPreferences(
     val expiryRemindersEnabled: Boolean = true,
     val demoRefreshEnabled: Boolean = true,
     val shakeToToggleEnabled: Boolean = false,
-    val manualDistrict: String = "Sai Kung"
+    val manualDistrict: String = "Sai Kung",
+    // Notification categories. [notificationsEnabled] is the master switch; the rest refine it.
+    val notificationsEnabled: Boolean = true,
+    val transactionAlerts: Boolean = true,
+    val offerAlerts: Boolean = true,
+    val serviceAnnouncements: Boolean = true,
+    // Accessibility and elderly-friendly preferences.
+    val elderlyMode: Boolean = false,
+    val largeText: Boolean = false,
+    val highContrast: Boolean = false,
+    val voiceReading: Boolean = false
 )
 
 data class WalletMessage(
     val id: String, val title: String, val body: String,
     val type: MessageType, val createdAt: Long, val isRead: Boolean,
-    val cardId: String? = null, val transactionId: String? = null
+    val cardId: String? = null, val transactionId: String? = null,
+    /** Null for rows created before the structured-message migration. */
+    val kind: MessageKind? = null,
+    /** Amount referenced by a transactional message, in cents. */
+    val amountCents: Long? = null
 )
 
 data class ServiceLocation(

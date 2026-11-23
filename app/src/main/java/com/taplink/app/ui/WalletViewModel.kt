@@ -13,7 +13,17 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import java.util.UUID
 
-class WalletViewModel(val repository: TapLinkRepository, private val saved: SavedStateHandle) : ViewModel() {
+class WalletViewModel(
+    val repository: TapLinkRepository,
+    private val saved: SavedStateHandle,
+    ownerId: String = WalletOwner.GUEST
+) : ViewModel() {
+    /**
+     * Declared before the flows below: property initialisers and init blocks run in source order, so
+     * the owner is selected before any screen can collect this account's wallet.
+     */
+    init { repository.useOwner(ownerId) }
+
     private val sharing = SharingStarted.WhileSubscribed(5_000)
     val cards = repository.cards.stateIn(viewModelScope, sharing, emptyList())
     val selectedCard = repository.selectedCard.stateIn(viewModelScope, sharing, null)

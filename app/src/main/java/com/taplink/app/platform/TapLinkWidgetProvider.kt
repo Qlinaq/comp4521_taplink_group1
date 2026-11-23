@@ -47,6 +47,7 @@ class TapLinkWidgetProvider : AppWidgetProvider() {
             val ids = manager.getAppWidgetIds(ComponentName(app, TapLinkWidgetProvider::class.java))
             if (ids.isEmpty()) return@withLock
             val repository = TapLinkContainer.repository(app)
+            repository.useOwner(TapLinkContainer.activeOwner(app))
             repository.initialize()
             val cards = repository.cards.first()
             val prefs = repository.preferences.first()

@@ -6,11 +6,13 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
 import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.taplink.app.R
+import com.taplink.app.domain.AppLanguage
 import com.taplink.app.domain.AppPreferences
 import com.taplink.app.domain.WalletMessage
 import kotlinx.coroutines.Dispatchers
@@ -21,15 +23,26 @@ import kotlinx.coroutines.withContext
 object TapLinkNotifications {
     const val CHANNEL_ID = "taplink_reminders_v1"
     private const val TAG_PREFIX = "taplink_message:"
+    private const val TEST_TAG = "taplink_test"
     private val deliveryLock = Mutex()
 
     /** UI requests this permission after the user opts in. Workers never launch permission UI. */
     fun permissionToRequest(): String? =
         if (Build.VERSION.SDK_INT >= 33) Manifest.permission.POST_NOTIFICATIONS else null
 
+    /**
+     * Notifications are built outside Compose, so the locale has to be applied here. Without this,
+     * a Chinese interface would post English alerts.
+     */
+    fun localizedContext(context: Context, language: AppLanguage): Context {
+        val configuration = Configuration(context.resources.configuration).apply { setLocale(language.locale) }
+        return context.createConfigurationContext(configuration)
+    }
+
+    /** Re-creating an existing channel updates its name, so a language change reaches the system UI. */
     fun createChannel(context: Context) {
-        val channel = NotificationChannel(CHANNEL_ID, "TapLink demo reminders", NotificationManager.IMPORTANCE_DEFAULT).apply {
-            description = "Simulated card balance, pass and offer reminders"
+        val channel = NotificationChannel(CHANNEL_ID, context.getString(R.string.notif_channel_name), NotificationManager.IMPORTANCE_DEFAULT).apply {
+            description = context.getString(R.string.notif_channel_description)
             lockscreenVisibility = android.app.Notification.VISIBILITY_PRIVATE
             setShowBadge(true)
         }
@@ -49,7 +62,8 @@ object TapLinkNotifications {
         withContext(Dispatchers.IO) {
             deliveryLock.withLock {
                 val app = context.applicationContext
-                createChannel(app)
+                val localized = localizedContext(app, prefs.language)
+                createChannel(localized)
                 val now = System.currentTimeMillis()
                 val manager = app.getSystemService(NotificationManager::class.java)
                 val allowedIds = messages.filter { ReminderPolicy.allowed(it, prefs, now) }.map { it.id }.toSet()
@@ -62,16 +76,18 @@ object TapLinkNotifications {
                 val delivered = storage.getStringSet("message_ids", emptySet()).orEmpty().toMutableSet()
                 var count = 0
                 for (message in ReminderPolicy.pending(messages, prefs, delivered, now)) {
+                    val title = MessageCopy.title(localized, message)
+                    val body = MessageCopy.body(localized, message)
                     val publicVersion = NotificationCompat.Builder(app, CHANNEL_ID)
                         .setSmallIcon(R.drawable.ic_taplink)
-                        .setContentTitle("TapLink demo reminder")
-                        .setContentText("Open TapLink to view your message.").build()
+                        .setContentTitle(localized.getString(R.string.notif_public_title))
+                        .setContentText(localized.getString(R.string.notif_public_body)).build()
                     val notification = NotificationCompat.Builder(app, CHANNEL_ID)
                         .setSmallIcon(R.drawable.ic_taplink)
-                        .setContentTitle(message.title)
-                        .setContentText(message.body)
-                        .setStyle(NotificationCompat.BigTextStyle().bigText(message.body))
-                        .setSubText("Simulated wallet · No real money")
+                        .setContentTitle(title)
+                        .setContentText(body)
+                        .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+                        .setSubText(localized.getString(R.string.notif_subtext))
                         .setContentIntent(TapLinkNavigation.pendingIntent(app, TapLinkNavigation.MESSAGES))
                         .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
                         .setPublicVersion(publicVersion)
@@ -94,4 +110,28 @@ object TapLinkNotifications {
                 count
             }
         }
+
+    /**
+     * A test notification proves the channel and permission actually work on this device. It is
+     * local and simulated; nothing leaves the phone.
+     */
+    @SuppressLint("MissingPermission")
+    suspend fun postTest(context: Context, prefs: AppPreferences): Boolean = withContext(Dispatchers.IO) {
+        val app = context.applicationContext
+        val localized = localizedContext(app, prefs.language)
+        createChannel(localized)
+        if (!canPost(app)) return@withContext false
+        val notification = NotificationCompat.Builder(app, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_taplink)
+            .setContentTitle(localized.getString(R.string.notif_test_title))
+            .setContentText(localized.getString(R.string.notif_test_body))
+            .setStyle(NotificationCompat.BigTextStyle().bigText(localized.getString(R.string.notif_test_body)))
+            .setSubText(localized.getString(R.string.notif_subtext))
+            .setContentIntent(TapLinkNavigation.pendingIntent(app, TapLinkNavigation.MESSAGES))
+            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+            .setAutoCancel(true)
+            .build()
+        runCatching { app.getSystemService(NotificationManager::class.java).notify(TEST_TAG, 0, notification) }
+            .isSuccess
+    }
 }

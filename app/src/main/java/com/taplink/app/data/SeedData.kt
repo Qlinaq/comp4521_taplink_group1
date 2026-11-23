@@ -51,11 +51,19 @@ internal object SeedData {
         ).map(::OfferEntity))
     }
 
-    suspend fun populate(dao: TapLinkDao, now: Long) {
+    suspend fun populate(dao: TapLinkDao, now: Long, owner: String = WalletOwner.GUEST) {
         ensureCatalog(dao, now)
+        if (owner == WalletOwner.GUEST) demoWallet(dao, now, owner) else newAccountWallet(dao, now, owner)
+    }
+
+    /**
+     * The demo wallet used without an account: three cards with a month of simulated activity, so
+     * every screen has something to show.
+     */
+    private suspend fun demoWallet(dao: TapLinkDao, now: Long, owner: String) {
         val previousMonth = YearMonth.from(Instant.ofEpochMilli(now).atZone(ZoneId.of("Asia/Hong_Kong")))
             .minusMonths(1).atDay(12).atStartOfDay(ZoneId.of("Asia/Hong_Kong")).toInstant().toEpochMilli()
-        seedCard(dao, Card("card-campus", "Campus", "•••• 2048", 0, false, now - 60 * DAY, "#167D68"), listOf(
+        seedCard(dao, owner, Card("card-campus", "Campus", "•••• 2048", 0, false, now - 60 * DAY, "#167D68"), listOf(
             Event(60000, null, now - 50 * DAY),
             Event(4250, "campus-cafe", now - 10 * DAY),
             Event(1950, "harbour-metro", now - 8 * DAY),
@@ -64,24 +72,47 @@ internal object SeedData {
             Event(2200, "campus-cafe", now - 2 * DAY),
             Event(5000, "city-bus", now - 3_600_000L)
         ))
-        seedCard(dao, Card("card-commute", "Commute", "•••• 8192", 0, false, now - 60 * DAY + 1, "#435D9B"), listOf(
+        seedCard(dao, owner, Card("card-commute", "Commute", "•••• 8192", 0, false, now - 60 * DAY + 1, "#435D9B"), listOf(
             Event(80000, null, now - 55 * DAY),
             Event(35000, "harbour-metro", previousMonth),
             Event(18000, "city-bus", now - DAY)
         ))
-        seedCard(dao, Card("card-weekend", "Weekend", "•••• 4096", 0, true, now - 60 * DAY + 2, "#AD7044"),
+        seedCard(dao, owner, Card("card-weekend", "Weekend", "•••• 4096", 0, true, now - 60 * DAY + 2, "#AD7044"),
             listOf(Event(20000, null, now - 30 * DAY)))
-        dao.savePreferences(PreferencesEntity(value = AppPreferences(selectedCardId = "card-campus")))
+        selectCard(dao, "card-campus")
         dao.insertMessage(MessageEntity(WalletMessage(
             "welcome", "Welcome to TapLink", "Your three demo cards are ready. All balances, payments, passes, and coupons are simulated.",
-            MessageType.INFO, now, false
-        )))
+            MessageType.INFO, now, false, kind = MessageKind.WELCOME
+        ), owner))
+    }
+
+    /**
+     * A newly signed-in account starts with one empty card rather than a copy of the demo wallet:
+     * sharing the demo numbers would make two accounts look identical, and a stored-value wallet
+     * that appears pre-funded would be a false claim in a public-service application.
+     */
+    private suspend fun newAccountWallet(dao: TapLinkDao, now: Long, owner: String) {
+        val cardId = "$owner:card"
+        val digits = owner.filter(Char::isLetterOrDigit).takeLast(4).uppercase().padStart(4, '0')
+        dao.insertCard(CardEntity(Card(cardId, "My TapLink Card", "•••• $digits", 0, false, now, "#167D68"), owner))
+        selectCard(dao, cardId)
+        dao.insertMessage(MessageEntity(WalletMessage(
+            "$owner:welcome", "Welcome to TapLink",
+            "This wallet is new and empty. Top up to start; all amounts are simulated.",
+            MessageType.INFO, now, false, kind = MessageKind.WELCOME
+        ), owner))
+    }
+
+    /** Selecting a card must not reset the theme, language or accessibility choices. */
+    private suspend fun selectCard(dao: TapLinkDao, cardId: String) {
+        val current = dao.preferences()?.value ?: AppPreferences()
+        dao.savePreferences(PreferencesEntity(value = current.copy(selectedCardId = cardId)))
     }
 
     private data class Event(val amount: Long, val merchantId: String?, val time: Long)
 
-    private suspend fun seedCard(dao: TapLinkDao, card: Card, events: List<Event>) {
-        dao.insertCard(CardEntity(card))
+    private suspend fun seedCard(dao: TapLinkDao, owner: String, card: Card, events: List<Event>) {
+        dao.insertCard(CardEntity(card, owner))
         var balance = 0L
         events.sortedBy { it.time }.forEachIndexed { index, event ->
             val merchant = merchants.find { it.id == event.merchantId }
@@ -92,9 +123,9 @@ internal object SeedData {
                 if (merchant == null) TransactionType.TOP_UP else TransactionType.PAYMENT,
                 event.amount, balance, merchant?.id, merchant?.name ?: "Demo funding",
                 merchant?.category ?: Category.OTHER, event.time, "Seeded simulated activity")
-            dao.insertTransaction(TransactionEntity(transaction))
-            dao.insertOperation(OperationEntity(id, "seed", id, null, null, balance))
+            dao.insertTransaction(TransactionEntity(transaction, owner))
+            dao.insertOperation(OperationEntity(id, "seed", id, null, null, balance, owner))
         }
-        dao.updateCard(CardEntity(card.copy(balanceCents = balance)))
+        dao.updateCard(CardEntity(card.copy(balanceCents = balance), owner))
     }
 }

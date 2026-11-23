@@ -143,10 +143,19 @@ class RoomTapLinkRepositoryTest {
         assertEquals(2, repository.transactions.first().count { it.operationId == "reload-payment" })
         assertEquals(listOf(TransactionType.AUTO_RELOAD, TransactionType.PAYMENT),
             repository.transactions.first().filter { it.operationId == "reload-payment" }.map { it.type })
-        val message = repository.messages.first().single { it.transactionId == receipt.transaction.id }
-        assertTrue(message.body.contains("HK$6.00"))
+        // Two messages now belong to this transaction: the inbox record of the payment and the
+        // low-balance alert. Asserting both keeps the old alert guarantee while covering the new row.
+        val written = repository.messages.first().filter { it.transactionId == receipt.transaction.id }
+        assertEquals(2, written.size)
+        val alert = written.single { it.type == MessageType.LOW_BALANCE }
+        assertTrue(alert.body.contains("HK$6.00"))
+        assertEquals(MessageKind.LOW_BALANCE, alert.kind)
+        val record = written.single { it.type == MessageType.TRANSACTION }
+        assertEquals(MessageKind.PAYMENT, record.kind)
+        assertEquals(1500L, record.amountCents)
+        assertTrue(record.body.contains("HK$15.00"))
         assertEquals(receipt, value(repository.pay(card.id, "campus-cafe", 1500, "reload-payment")))
-        assertEquals(1, repository.messages.first().count { it.transactionId == receipt.transaction.id })
+        assertEquals(2, repository.messages.first().count { it.transactionId == receipt.transaction.id })
     }
 
     @Test fun equalTimestampLedgerOrderDoesNotDependOnLexicalIds() = runBlocking {
@@ -166,7 +175,7 @@ class RoomTapLinkRepositoryTest {
         val expectedIds = listOf("a-later-credit", "b-reload", "z-payment")
         val ids = expectedIds.toSet()
         assertEquals(expectedIds, repository.transactions.first().filter { it.id in ids }.map { it.id })
-        val stored = database.dao().allTransactions().filter { it.value.id in ids }
+        val stored = database.dao().allTransactions(WalletOwner.GUEST).filter { it.value.id in ids }
         assertEquals(expectedIds, stored.map { it.value.id })
         assertTrue(stored.zipWithNext().all { (newer, older) -> newer.ledgerSequence > older.ledgerSequence })
         assertEquals(listOf(14100L, 14000L, 4000L), stored.map { it.value.balanceAfterCents })
@@ -182,7 +191,7 @@ class RoomTapLinkRepositoryTest {
         assertTrue(history.all { it.createdAt == now })
         assertEquals(listOf(third.transaction, second.transaction, first.transaction), history)
         assertEquals(listOf(10020L, 9990L, 10010L), history.map { it.balanceAfterCents })
-        assertEquals(history, database.dao().allTransactions().map { it.value }.filter { it.operationId in relevant })
+        assertEquals(history, database.dao().allTransactions(WalletOwner.GUEST).map { it.value }.filter { it.operationId in relevant })
     }
 
     @Test fun lowBalanceAlertUsesFinalBalanceAndRespectsPreferences() = runBlocking {
@@ -190,10 +199,14 @@ class RoomTapLinkRepositoryTest {
         value(repository.updatePreferences(repository.preferences.first().copy(autoReloadEnabled = true)))
         val topped = value(repository.pay(card.id, "campus-cafe", 2000, "no-alert-after-reload"))
         assertEquals(14000L, topped.finalBalanceCents)
-        assertTrue(repository.messages.first().none { it.transactionId == topped.transaction.id })
+        // A reload lifted the final balance, so no low-balance alert is stored; the payment is still
+        // recorded in the inbox as a transaction row.
+        assertEquals(listOf(MessageKind.PAYMENT),
+            repository.messages.first().filter { it.transactionId == topped.transaction.id }.map { it.kind })
         value(repository.updatePreferences(repository.preferences.first().copy(autoReloadEnabled = false, lowBalanceAlerts = false)))
         val quiet = value(repository.pay(card.id, "campus-cafe", 14000, "alerts-disabled"))
-        assertTrue(repository.messages.first().none { it.transactionId == quiet.transaction.id })
+        assertEquals(listOf(MessageKind.PAYMENT),
+            repository.messages.first().filter { it.transactionId == quiet.transaction.id }.map { it.kind })
     }
 
     @Test fun rejectedOperationsLeaveLedgerBalanceAndMessagesUnchanged() = runBlocking {
@@ -430,6 +443,38 @@ class RoomTapLinkRepositoryTest {
 
     private suspend fun sql(statement: String) = withContext(Dispatchers.IO) {
         database.openHelper.writableDatabase.execSQL(statement)
+    }
+
+    /**
+     * The reported defect: signing in as another account showed the previous wallet. Each owner now
+     * has its own cards, ledger and messages, and a card id from another owner is not found.
+     */
+    @Test fun eachOwnerSeesOnlyItsOwnWallet() = runBlocking {
+        val guestCards = repository.cards.first()
+        assertEquals(3, guestCards.size)
+
+        repository.useOwner("account-a")
+        repository.initialize()
+        val aCards = repository.cards.first()
+        assertEquals(1, aCards.size)
+        assertEquals("My TapLink Card", aCards.single().name)
+        assertEquals(0L, aCards.single().balanceCents)
+        assertTrue(repository.transactions.first().isEmpty())
+        value(repository.topUp(aCards.single().id, 5000, "account-a-top-up"))
+        assertEquals(5000L, repository.cards.first().single().balanceCents)
+
+        repository.useOwner("account-b")
+        repository.initialize()
+        assertEquals(1, repository.cards.first().size)
+        assertEquals(0L, repository.cards.first().single().balanceCents)
+        assertTrue(repository.transactions.first().isEmpty())
+        // A card id belonging to another owner must not be spendable.
+        assertError(WalletError.NOT_FOUND, repository.topUp(aCards.single().id, 1000, "cross-owner-top-up"))
+
+        repository.useOwner(WalletOwner.GUEST)
+        repository.initialize()
+        assertEquals(guestCards.map { it.id }, repository.cards.first().map { it.id })
+        assertEquals(guestCards.map { it.balanceCents }, repository.cards.first().map { it.balanceCents })
     }
 
     private fun <T> value(result: WalletResult<T>): T = when (result) {
