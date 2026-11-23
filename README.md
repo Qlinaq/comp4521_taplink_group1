@@ -50,6 +50,8 @@ bash ./gradlew connectedDebugAndroidTest
 
 Windows users may run `tools/verify.ps1` (optionally `-DeviceTests`). GitHub Actions builds, runs unit tests and lint, and uploads the debug APK and reports. A workflow definition alone is not a passing result: consult the latest run and the recorded local verification.
 
+The workflow retries once, and only once, when a run fails while *resolving a dependency* (`could not resolve`, a 5xx from a repository, a timeout) rather than on code. The first run of the workflow tripped over exactly this: the KSP plugin artifact could not be fetched although the same commit built on a re-run. A compile, test or lint failure does not match the retry pattern, so a red run still means the code is red.
+
 ## Team handoff
 
 - [Setup and contribution guide](docs/TEAM_HANDOFF.md)

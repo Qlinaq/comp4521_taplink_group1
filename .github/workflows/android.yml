@@ -29,7 +29,30 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v5
       - name: Build, test and lint
-        run: bash ./gradlew --no-daemon testDebugUnitTest lintDebug assembleDebug
+        shell: bash
+        run: |
+          # One retry, only for a dependency-resolution failure. The first run of this
+          # workflow failed with "could not resolve plugin artifact
+          # com.google.devtools.ksp" while the same commit built on a re-run, i.e. the
+          # Maven/plugin repositories were briefly unreachable from the runner. Such a
+          # failure is not a defect in the code, so retry it once after dropping the
+          # cached "not found" descriptors that would otherwise be reused verbatim.
+          # A real compile, test or lint failure does not match the pattern and fails
+          # the job immediately, keeping the signal honest.
+          set -o pipefail
+          build() {
+            bash ./gradlew --no-daemon testDebugUnitTest lintDebug assembleDebug 2>&1 | tee "$RUNNER_TEMP/gradle.log"
+          }
+          if build; then
+            exit 0
+          fi
+          if grep -qiE "could not resolve|could not (GET|HEAD)|read timed out|connection reset|status code: 5[0-9][0-9]" "$RUNNER_TEMP/gradle.log"; then
+            echo "::warning::Dependency resolution failed; retrying once (transient repository error)."
+            rm -rf "$HOME/.gradle/caches/modules-2/metadata-"*/descriptors || true
+            build
+          else
+            exit 1
+          fi
       - name: Save APK and reports
         if: always()
         uses: actions/upload-artifact@v6
