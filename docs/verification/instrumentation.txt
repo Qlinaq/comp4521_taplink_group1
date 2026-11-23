@@ -23,8 +23,8 @@
 > Task :app:preDebugAndroidTestBuild SKIPPED
 > Task :app:processDebugAndroidTestManifest
 > Task :app:generateDebugAndroidTestBuildConfig
-> Task :app:generateDebugAndroidTestResValues UP-TO-DATE
 > Task :app:checkDebugAndroidTestAarMetadata
+> Task :app:generateDebugAndroidTestResValues UP-TO-DATE
 > Task :app:mapDebugAndroidTestSourceSetPaths
 > Task :app:generateDebugAndroidTestResources
 > Task :app:javaPreCompileDebugAndroidTest
@@ -57,8 +57,8 @@
 > Task :app:mergeDebugAndroidTestAssets
 > Task :app:compressDebugAndroidTestAssets
 > Task :app:desugarDebugAndroidTestFileDependencies
-> Task :app:mergeDebugAndroidTestJniLibFolders
 > Task :app:checkDebugAndroidTestDuplicateClasses
+> Task :app:mergeDebugAndroidTestJniLibFolders
 > Task :app:mergeDebugAndroidTestNativeLibs NO-SOURCE
 > Task :app:stripDebugAndroidTestDebugSymbols NO-SOURCE
 > Task :app:mergeLibDexDebugAndroidTest
@@ -82,5 +82,5 @@ Starting 50 tests on Small_Phone(AVD) - 17
 
 Finished 50 tests on Small_Phone(AVD) - 17
 
-BUILD SUCCESSFUL in 18s
+BUILD SUCCESSFUL in 17s
 69 actionable tasks: 29 executed, 40 up-to-date

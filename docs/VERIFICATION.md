@@ -1,6 +1,8 @@
 # Verification record
 
-Round 1 verified on 22 November 2026 (Hong Kong time), implementation revision `97b06db` (wallet F01–F18). Round 2 verified on 23 November 2026, working tree on top of `1858cff` (accounts F19 and interface language F20). Round 3 verified on 23 November 2026, working tree on top of round 2 (notifications and accessibility F21–F25). Round 4 verified on 23 November 2026, working tree on top of round 3 (per-account wallets F26, account entry F27 and the Chinese-input diagnosis). Round 5 verified on 23 November 2026, working tree on top of round 4 (page-heading system and chart typography F28).
+Round 1 verified on 22 November 2026 (Hong Kong time), implementation revision `97b06db` (wallet F01–F18). Round 2 verified on 23 November 2026, working tree on top of `1858cff` (accounts F19 and interface language F20). Round 3 verified on 23 November 2026, working tree on top of round 2 (notifications and accessibility F21–F25). Round 4 verified on 23 November 2026, working tree on top of round 3 (per-account wallets F26, account entry F27 and the Chinese-input diagnosis). Round 5 verified on 23 November 2026, working tree on top of round 4 (page-heading system and chart typography F28). Round 6 verified on 23 November 2026, working tree on top of round 5 (deprecation cleanup: zero Kotlin warnings).
+
+**Round 6 result: debug APK built successfully; 94 JVM tests passed; 50 Android instrumentation tests passed; Android lint reported zero errors and 51 warnings; the Kotlin compile emitted zero warnings.**
 
 **Round 5 result: debug APK built successfully; 94 JVM tests passed; 50 Android instrumentation tests passed; Android lint reported zero errors and 51 warnings.**
 
@@ -302,6 +304,58 @@ Project totals: **94 JVM tests, 50 instrumentation tests**.
   繁體中文. Refusing that combination would nag users whose keyboard can output both.
 - **No visual regression test.** Nothing in the suite would fail if a heading lost its pill again;
   the screenshots are the record.
+
+## Round 6: deprecation cleanup (23 November 2026)
+
+Verified on the same host and the same `Small_Phone` AVD (API 35, 720×1280, density 320). No
+behaviour was meant to change. The round exists because the first green CI run printed ten
+deprecation warnings: a build that "passes" while warning ten times is a build the next reader stops
+trusting, and every one of the ten had a supported replacement.
+
+**Round 6 result: debug APK built successfully; 94 JVM tests passed; 50 Android instrumentation tests
+passed; Android lint reported zero errors and 51 warnings; the Kotlin compile emitted zero warnings.**
+
+- Round 6 APK SHA-256: `2a0deb8fd018269eacbc905121f5ef110258acb21fe0b9e6be3d434f7c6680d8` (56.5 MB debug build; byte-identical in size to round 5, because the replaced icons are the same vectors).
+- Lint breakdown unchanged: 39 `GradleDependency`, 8 `PluralsCandidate`, 3 `AndroidGradlePluginVersion`, 1 `AppBundleLocaleChanges`.
+
+### What was warned about, and what replaced it
+
+| Site | Warning | Change |
+| --- | --- | --- |
+| `ExploreScreen` ×2 | `Icons.Outlined.ViewList`, `Icons.Outlined.OpenInNew` deprecated | `Icons.AutoMirrored.Outlined.*` |
+| `PaymentScreens`, `TapLinkApp` | `Icons.Outlined.ReceiptLong` deprecated | `Icons.AutoMirrored.Outlined.ReceiptLong` |
+| `TapLinkApp`, `AccessibilityScreen` | `Icons.Outlined.VolumeUp` deprecated | `Icons.AutoMirrored.Outlined.VolumeUp` |
+| `ContactScreen`, `SupportChatScreen` ×2 | `Icons.Outlined.Chat` deprecated | `Icons.AutoMirrored.Outlined.Chat` |
+| `NotificationSettingsScreen` | `Icons.Outlined.Send` deprecated | `Icons.AutoMirrored.Outlined.Send` |
+| `KeyboardSupport` | `InputMethodSubtype.getLocale()` deprecated | `subtype.languageTag` through `Locale.forLanguageTag` |
+
+The icon swap is invisible: an AutoMirrored glyph draws the same path in a left-to-right layout and
+only mirrors under RTL, which this app does not ship. The keyboard change is not purely cosmetic.
+The old test was `subtype.locale.contains("zh")`, a substring search over a locale string; the new
+one parses the BCP-47 tag and compares the **primary language subtag**, so `zh-Hans-CN` and
+`zh-Hant-TW` both count as Chinese, `en-HK` counts as English, and an unparseable tag can no longer
+match by accident. The existing limit still stands: the check is per language, not per script.
+
+### How this was verified
+
+- `./gradlew clean assembleDebug testDebugUnitTest lintDebug` finished with **zero `w:` lines**
+  (round 5 emitted ten), 94 JVM tests passing, and lint unchanged at 0 errors / 51 warnings.
+  A first attempt with `--rerun-tasks` looked clean in ten seconds; it was discarded because a
+  clean build is the only compile whose warnings can be counted honestly.
+- `connectedDebugAndroidTest` ran 50 tests with zero failures on the emulator.
+- On the device: the contact rows, the bottom navigation and the Activity screen all still draw
+  their icons, so the AutoMirrored swap did not resolve to a missing vector.
+- `docs/verification/build.txt`, `lint.xml` and `unit-results.json` were regenerated from this run,
+  so the recorded log and the recorded hash describe the same APK.
+
+### Two warnings that stay in the CI log and are not defects
+
+- `Unable to strip the following libraries: libandroidx.graphics.path.so` — AGP packages a prebuilt
+  native library and the hosted runner has no NDK strip tool. The library is packed unstripped,
+  which costs a few hundred kilobytes in a debug artefact and changes nothing at runtime.
+- `Cache is read-only: will not save state for use in subsequent builds` — GitHub cache entries are
+  immutable per key, and this branch had already written that key. The run restores the cache but
+  cannot overwrite it; the key rotates by itself when the dependency declarations change.
 
 
 
