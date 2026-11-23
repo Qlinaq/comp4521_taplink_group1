@@ -263,7 +263,7 @@ Project totals: **94 JVM tests, 50 instrumentation tests**.
 | Activity ring | The centre reads "This month" in a bold face with "Debits only" in a medium face under it, both inside the inner diameter of the stroke (screenshot 37); the same layout holds at 150% text. |
 | Chinese punctuation | With 简体中文 (拼音) enabled, the comma key produced `，` and the period key produced `。` in the support field; the question "怎么充值。" was accepted, sent, and answered, so the field itself does not filter or normalise punctuation (screenshot 40). |
 | Keyboard coverage for the three interface languages | The test device was prepared with `English (US) (QWERTY)`, `简体中文 (拼音)` and `繁體中文 (台灣, 注音)` in Gboard, so the Traditional Chinese interface can be typed into with a Traditional layout instead of a Simplified one (screenshot 41). |
-| Elderly mode | The simplified Home greeting keeps its explanatory line, because that line is what tells a first-time elderly user what the screen is for; only the standard greeting lost its subtitle. |
+| Elderly mode | Not re-checked on the device this round: `Dashboard` passes `home_simple_subtitle` for the simplified greeting and `null` only for the standard one, so the simplified Home still shows its explanatory line. |
 
 ### Defects found during this round
 
