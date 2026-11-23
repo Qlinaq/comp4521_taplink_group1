@@ -2,6 +2,7 @@ package com.taplink.app.ui.settings
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -65,7 +66,7 @@ fun NotificationSettingsScreen(vm: WalletViewModel, platform: PlatformActions) {
             }
             platform.sendTestNotification?.let { send ->
                 OutlinedButton(send, Modifier.fillMaxWidth(), enabled = master) {
-                    Icon(Icons.Outlined.Send, null, Modifier.size(18.dp))
+                    Icon(Icons.AutoMirrored.Outlined.Send, null, Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
                     Text(stringResource(R.string.notif_send_test))
                 }

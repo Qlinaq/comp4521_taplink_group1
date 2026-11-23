@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Send
+import androidx.compose.material.icons.automirrored.outlined.Chat
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -207,7 +208,7 @@ private fun SupportFooter(platform: PlatformActions, canClear: Boolean, onClear:
             platform.openWhatsApp?.let { open ->
                 val prefill = stringResource(R.string.contact_whatsapp_message)
                 TextButton({ open(prefill) }) {
-                    Icon(Icons.Outlined.Chat, null, Modifier.size(18.dp))
+                    Icon(Icons.AutoMirrored.Outlined.Chat, null, Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp))
                     Text(stringResource(R.string.support_handoff, SupportContacts.WHATSAPP_DISPLAY))
                 }
@@ -232,7 +233,7 @@ private fun SupportIntro(platform: PlatformActions, elderly: Boolean, onPick: (S
         platform.openWhatsApp?.let { open ->
             val prefill = stringResource(R.string.contact_whatsapp_message)
             OutlinedButton({ open(prefill) }, Modifier.fillMaxWidth()) {
-                Icon(Icons.Outlined.Chat, null, Modifier.size(18.dp))
+                Icon(Icons.AutoMirrored.Outlined.Chat, null, Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
                 Text(stringResource(R.string.contact_whatsapp))
             }

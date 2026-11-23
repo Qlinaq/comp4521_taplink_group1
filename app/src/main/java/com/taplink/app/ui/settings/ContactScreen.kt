@@ -2,6 +2,7 @@ package com.taplink.app.ui.settings
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.Chat
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -35,7 +36,7 @@ fun ContactScreen(vm: WalletViewModel, platform: PlatformActions) {
         Panel {
             SectionHeading(stringResource(R.string.contact_section_message))
             ContactChannel(
-                icon = Icons.Outlined.Chat,
+                icon = Icons.AutoMirrored.Outlined.Chat,
                 title = stringResource(R.string.contact_whatsapp),
                 detail = stringResource(R.string.contact_whatsapp_detail, SupportContacts.WHATSAPP_DISPLAY),
                 action = stringResource(R.string.contact_open_whatsapp)

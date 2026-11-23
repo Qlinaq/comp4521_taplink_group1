@@ -3,6 +3,7 @@ package com.taplink.app.platform
 import android.content.Context
 import android.view.inputmethod.InputMethodManager
 import com.taplink.app.domain.AppLanguage
+import java.util.Locale
 
 /**
  * Whether the enabled on-screen keyboards can type the interface language.
@@ -24,7 +25,14 @@ object KeyboardSupport {
             // app never nags a user whose keyboard does work.
             if (ime.subtypeCount == 0) return@any false
             (0 until ime.subtypeCount).any { index ->
-                ime.getSubtypeAt(index).locale.orEmpty().contains(tag, ignoreCase = true)
+                // getLocale() is deprecated; the BCP-47 tag is the supported source. Only the
+                // primary language subtag is compared, because the script subtag (Hans/Hant) and
+                // the region must not disqualify a keyboard: either Chinese layout can type either
+                // Chinese interface, and a Hong Kong English layout is still English.
+                val languageCode = Locale.forLanguageTag(
+                    ime.getSubtypeAt(index).languageTag.orEmpty().replace('_', '-')
+                ).language
+                languageCode.equals(tag, ignoreCase = true)
             }
         }
     }

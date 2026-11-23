@@ -4,6 +4,8 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
+import androidx.compose.material.icons.automirrored.outlined.VolumeUp
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -124,7 +126,7 @@ fun TapLinkApp(
                 if (prefs.voiceReading) platform.speak?.let { speak ->
                     val fallback = stringResource(R.string.a11y_voice_default)
                     IconButton(onClick = { speak(voiceSummary.value.ifBlank { fallback }) }) {
-                        Icon(Icons.Outlined.VolumeUp, stringResource(R.string.a11y_voice_action))
+                        Icon(Icons.AutoMirrored.Outlined.VolumeUp, stringResource(R.string.a11y_voice_action))
                     }
                 }
                 if (root) IconButton({ vm.navigate("Messages") }, enabled = !busy) {
@@ -133,7 +135,7 @@ fun TapLinkApp(
             }, colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)) },
             bottomBar = {
                 if (root) NavigationBar(containerColor = MaterialTheme.colorScheme.surface, tonalElevation = 0.dp) {
-                    roots.forEachIndexed { index, destinationName -> NavigationBarItem(selected = route == destinationName, onClick = { vm.root(destinationName) }, enabled = !busy, icon = { Icon(listOf(Icons.Outlined.Home, Icons.Outlined.ReceiptLong, Icons.Outlined.Explore, Icons.Outlined.GridView)[index], null) }, label = { Text(routeLabel(destinationName)) }) }
+                    roots.forEachIndexed { index, destinationName -> NavigationBarItem(selected = route == destinationName, onClick = { vm.root(destinationName) }, enabled = !busy, icon = { Icon(listOf(Icons.Outlined.Home, Icons.AutoMirrored.Outlined.ReceiptLong, Icons.Outlined.Explore, Icons.Outlined.GridView)[index], null) }, label = { Text(routeLabel(destinationName)) }) }
                 }
             },
             snackbarHost = { SnackbarHost(snackbar) },

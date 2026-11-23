@@ -6,6 +6,8 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.OpenInNew
+import androidx.compose.material.icons.automirrored.outlined.ViewList
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -61,7 +63,7 @@ fun ExploreScreen(vm: WalletViewModel, platform: PlatformActions) {
             Text(locationNote, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             ChoiceField( stringResource(R.string.ui_service_type) , type, listOf("" to stringResource(R.string.ui_all_service_types)) + LocationType.entries.map { it.name to it.label() }, { vm.set("locationType", it) })
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                FilterChip(!map, { map = false }, label = { Text(stringResource(R.string.ui_list)) }, leadingIcon = { Icon(Icons.Outlined.ViewList, null, Modifier.size(18.dp)) })
+                FilterChip(!map, { map = false }, label = { Text(stringResource(R.string.ui_list)) }, leadingIcon = { Icon(Icons.AutoMirrored.Outlined.ViewList, null, Modifier.size(18.dp)) })
                 FilterChip(map, { map = true }, label = { Text(stringResource(R.string.ui_map)) }, leadingIcon = { Icon(Icons.Outlined.Map, null, Modifier.size(18.dp)) })
             }
             if (map && nearby.isNotEmpty()) {
@@ -79,7 +81,7 @@ fun ExploreScreen(vm: WalletViewModel, platform: PlatformActions) {
                 if (selected == location.id) { Text(location.description, style = MaterialTheme.typography.bodyMedium); DetailRow( stringResource(R.string.ui_sample_hours) , location.openingHours) }
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     TextButton({ selected = if (selected == location.id) "" else location.id }) { Text(if (selected == location.id) stringResource(R.string.ui_less_detail) else stringResource(R.string.ui_details)) }
-                    platform.openMap?.let { open -> TextButton({ open(location) }) { Icon(Icons.Outlined.OpenInNew, null, Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text(stringResource(R.string.ui_open_maps)) } }
+                    platform.openMap?.let { open -> TextButton({ open(location) }) { Icon(Icons.AutoMirrored.Outlined.OpenInNew, null, Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text(stringResource(R.string.ui_open_maps)) } }
                 }
             }
         }

@@ -3,6 +3,7 @@ package com.taplink.app.ui
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -113,7 +114,7 @@ fun ReceiptScreen(vm: WalletViewModel, platform: PlatformActions, detail: Boolea
             PrimaryButton( stringResource(R.string.ui_return_home) ) { vm.root("Home") }
         } else {
             Column(Modifier.fillMaxWidth().padding(vertical = 16.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Icon(if (detail) Icons.Outlined.ReceiptLong else Icons.Outlined.CheckCircle, null, Modifier.size(60.dp), tint = MaterialTheme.colorScheme.secondary)
+                Icon(if (detail) Icons.AutoMirrored.Outlined.ReceiptLong else Icons.Outlined.CheckCircle, null, Modifier.size(60.dp), tint = MaterialTheme.colorScheme.secondary)
                 Text(stringResource(if (detail) R.string.receipt_details_title else R.string.receipt_done_title), style = MaterialTheme.typography.headlineMedium)
                 Text("${if (tx.isDebit) "−" else "+"}${Money.format(tx.amountCents)}", style = MaterialTheme.typography.headlineLarge)
                 Text(tx.type.label(), color = MaterialTheme.colorScheme.onSurfaceVariant)

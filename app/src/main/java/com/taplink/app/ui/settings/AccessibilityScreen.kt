@@ -2,6 +2,7 @@ package com.taplink.app.ui.settings
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.VolumeUp
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -85,7 +86,7 @@ fun AccessibilityScreen(vm: WalletViewModel, platform: PlatformActions) {
             platform.speak?.let { speak ->
                 val sample = stringResource(R.string.a11y_voice_sample)
                 OutlinedButton(onClick = { speak(sample) }, modifier = Modifier.fillMaxWidth()) {
-                    Icon(Icons.Outlined.VolumeUp, null, Modifier.size(18.dp))
+                    Icon(Icons.AutoMirrored.Outlined.VolumeUp, null, Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
                     Text(stringResource(R.string.a11y_voice_test))
                 }
