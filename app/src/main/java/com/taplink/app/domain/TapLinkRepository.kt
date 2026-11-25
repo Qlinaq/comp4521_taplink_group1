@@ -35,7 +35,11 @@ interface TapLinkRepository {
     suspend fun setCardFrozen(cardId: String, frozen: Boolean): WalletResult<Unit>
     suspend fun selectCard(cardId: String): WalletResult<Unit>
     suspend fun topUp(cardId: String, amountCents: Long, operationId: String): WalletResult<Receipt>
-    suspend fun pay(cardId: String, merchantId: String, amountCents: Long, operationId: String): WalletResult<Receipt>
+    /**
+     * Debits [amountCents] — the merchant price — minus the discount of [couponId] when it is
+     * spendable at [merchantId], and marks that coupon used in the same transaction.
+     */
+    suspend fun pay(cardId: String, merchantId: String, amountCents: Long, operationId: String, couponId: String? = null): WalletResult<Receipt>
     suspend fun buyPass(cardId: String, operationId: String): WalletResult<Receipt>
     suspend fun updatePreferences(preferences: AppPreferences): WalletResult<Unit>
     /** Applies a quick, side-effect-free transform to the latest preferences inside one transaction. */

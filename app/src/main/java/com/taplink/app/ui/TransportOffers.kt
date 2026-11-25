@@ -60,28 +60,50 @@ fun TransportScreen(vm: WalletViewModel) {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun OffersScreen(vm: WalletViewModel) {
     val offers by vm.offers.collectAsStateWithLifecycle()
     val merchants by vm.merchants.collectAsStateWithLifecycle()
     val busy by vm.busy.collectAsStateWithLifecycle()
-    var favorites by rememberSaveable { mutableStateOf(false) }
+    // 0 = all, 1 = saved, 2 = usable now. An index survives recreation without a custom Saver.
+    var filter by rememberSaveable { mutableStateOf(0) }
     val confirmId by vm.offerDialog.collectAsStateWithLifecycle()
     var detailId by rememberSaveable { mutableStateOf("") }
+    val now = System.currentTimeMillis()
     ScreenColumn {
         PageHeading(
             stringResource(R.string.ui_offers_rewards),
             stringResource(R.string.offer_demo_heading),
             stringResource(R.string.offer_demo_intro)
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            FilterChip(!favorites, { favorites = false }, label = { Text(stringResource(R.string.ui_all_offers)) })
-            FilterChip(favorites, { favorites = true }, label = { Text(stringResource(R.string.ui_saved)) }, leadingIcon = { Icon(Icons.Outlined.FavoriteBorder, null, Modifier.size(18.dp)) })
+        // Wraps instead of squeezing: at 150% text the third chip used to be pressed into a
+        // one-character-wide column.
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            FilterChip(filter == 0, { filter = 0 }, label = { Text(stringResource(R.string.ui_all_offers)) })
+            FilterChip(filter == 1, { filter = 1 }, label = { Text(stringResource(R.string.ui_saved)) }, leadingIcon = { Icon(Icons.Outlined.FavoriteBorder, null, Modifier.size(18.dp)) })
+            // The one list a demo needs: coupons that can reduce the next payment.
+            FilterChip(filter == 2, { filter = 2 }, label = { Text(stringResource(R.string.coupon_filter_usable)) }, leadingIcon = { Icon(Icons.Outlined.LocalOffer, null, Modifier.size(18.dp)) })
         }
-        val visible = offers.filter { !favorites || it.isFavorite }
-        if (visible.isEmpty()) EmptyState( stringResource(R.string.ui_no_saved_offers) , stringResource(R.string.ui_tap_the_heart_on_an_offer_to_keep_it_here) , Icons.Outlined.LocalOffer)
+        val visible = offers
+            .filter { offer ->
+                when (filter) {
+                    1 -> offer.isFavorite
+                    2 -> offer.status(now) == CouponStatus.USABLE
+                    else -> true
+                }
+            }
+            // Coupons that can still be spent come first; an expired or spent one is kept for
+            // reference but never leads the list, because there is nothing to do with it.
+            .sortedWith(compareBy({ statusRank(it.status(now)) }, { it.expiresAt }))
+        if (visible.isEmpty()) {
+            when (filter) {
+                2 -> EmptyState(stringResource(R.string.coupon_empty_usable), stringResource(R.string.coupon_empty_usable_body), Icons.Outlined.LocalOffer)
+                else -> EmptyState(stringResource(R.string.ui_no_saved_offers), stringResource(R.string.ui_tap_the_heart_on_an_offer_to_keep_it_here), Icons.Outlined.LocalOffer)
+            }
+        }
         visible.forEach { offer ->
-            val expired = offer.expiresAt <= System.currentTimeMillis()
+            val status = offer.status(now)
             Panel {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
@@ -90,16 +112,44 @@ fun OffersScreen(vm: WalletViewModel) {
                     }
                     IconButton({ vm.toggleOfferFavorite(offer) }, enabled = !busy) { Icon(if (offer.isFavorite) Icons.Outlined.Favorite else Icons.Outlined.FavoriteBorder, if (offer.isFavorite) stringResource(R.string.ui_remove_saved_offer) else stringResource(R.string.ui_save_offer), tint = MaterialTheme.colorScheme.primary) }
                 }
-                Text(stringResource(R.string.offer_demo_card), style = MaterialTheme.typography.bodyMedium)
-                Text(stringResource(if (expired) R.string.ui_demo_offer_expired_on else R.string.ui_demo_offer_expires_on, shortDate(offer.expiresAt)), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(couponValueLabel(offer), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                    CouponStatusPill(status)
+                }
+                couponConditionLabel(offer)?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                Text(
+                    stringResource(
+                        if (status == CouponStatus.EXPIRED) R.string.ui_demo_offer_expired_on else R.string.ui_demo_offer_expires_on,
+                        shortDate(offer.expiresAt)
+                    ),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
                 TextButton({ detailId = if (detailId == offer.id) "" else offer.id }) { Text(if (detailId == offer.id) stringResource(R.string.ui_hide_terms) else stringResource(R.string.ui_view_terms)) }
                 if (detailId == offer.id) {
                     Text(stringResource(R.string.offer_demo_terms), style = MaterialTheme.typography.bodySmall)
                 }
-                if (offer.redeemedAt != null) {
-                    Notice(stringResource(R.string.ui_redeemed_demo_coupon, offer.couponCode ?: stringResource(R.string.ui_coupon_saved)))
-                    Text(stringResource(R.string.ui_redeemed_at_no_value, dateTime(offer.redeemedAt)), style = MaterialTheme.typography.bodySmall)
-                } else PrimaryButton(if (expired) stringResource(R.string.ui_offer_expired) else stringResource(R.string.ui_redeem_demo_coupon), !expired && !busy) { vm.openOfferDialog(offer.id) }
+                when (status) {
+                    CouponStatus.USABLE -> {
+                        Notice(stringResource(R.string.ui_redeemed_demo_coupon, offer.couponCode ?: stringResource(R.string.ui_coupon_saved)))
+                        Text(stringResource(R.string.ui_redeemed_at_no_value, dateTime(offer.redeemedAt ?: now)), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        PrimaryButton(stringResource(R.string.coupon_use), !busy) { vm.useCoupon(offer) }
+                    }
+                    CouponStatus.USED -> Text(
+                        listOfNotNull(
+                            offer.couponCode?.let { stringResource(R.string.ui_redeemed_demo_coupon, it) },
+                            offer.usedAt?.let { stringResource(R.string.coupon_used_on, dateTime(it)) }
+                        ).joinToString(" · "),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    // Expired coupons keep their place in the list, greyed out, so a user can see why
+                    // a coupon no longer reduces anything instead of it silently disappearing.
+                    CouponStatus.EXPIRED, CouponStatus.UNREDEEMED -> PrimaryButton(
+                        if (status == CouponStatus.EXPIRED) stringResource(R.string.ui_offer_expired) else stringResource(R.string.ui_redeem_demo_coupon),
+                        status == CouponStatus.UNREDEEMED && !busy
+                    ) { vm.openOfferDialog(offer.id) }
+                }
             }
         }
     }
@@ -117,6 +167,8 @@ fun OffersScreen(vm: WalletViewModel) {
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(offerTitle)
+                    Text(couponValueLabel(confirm), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                    couponConditionLabel(confirm)?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
                     Text(terms)
                 }
             },
@@ -126,10 +178,33 @@ fun OffersScreen(vm: WalletViewModel) {
     }
 }
 
+/** Sort weight: a coupon that can still be spent leads the list, a dead one trails it. */
+private fun statusRank(status: CouponStatus): Int = when (status) {
+    CouponStatus.USABLE -> 0
+    CouponStatus.UNREDEEMED -> 1
+    CouponStatus.USED -> 2
+    CouponStatus.EXPIRED -> 3
+}
+
+/** The three states a coupon can be in, as a chip on its card. */
 @Composable
-private fun offerDisplayTitle(offer: Offer): String = when (offer.id) {
-    "coffee-break" -> stringResource(R.string.offer_coffee_break_title)
-    "weekend-essentials" -> stringResource(R.string.offer_weekend_essentials_title)
-    "next-chapter" -> stringResource(R.string.offer_next_chapter_title)
-    else -> offer.title
+private fun CouponStatusPill(status: CouponStatus) {    val label = stringResource(
+        when (status) {
+            CouponStatus.USABLE -> R.string.coupon_status_usable
+            CouponStatus.USED -> R.string.coupon_status_used
+            CouponStatus.EXPIRED -> R.string.coupon_status_expired
+            CouponStatus.UNREDEEMED -> R.string.coupon_status_unredeemed
+        }
+    )
+    val container = when (status) {
+        CouponStatus.USABLE -> MaterialTheme.colorScheme.secondaryContainer
+        CouponStatus.EXPIRED -> MaterialTheme.colorScheme.errorContainer
+        else -> MaterialTheme.colorScheme.surfaceVariant
+    }
+    val content = when (status) {
+        CouponStatus.USABLE -> MaterialTheme.colorScheme.onSecondaryContainer
+        CouponStatus.EXPIRED -> MaterialTheme.colorScheme.onErrorContainer
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    Pill(label, container = container, content = content)
 }

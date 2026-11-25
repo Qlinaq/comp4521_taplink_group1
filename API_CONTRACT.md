@@ -33,7 +33,7 @@ interface TapLinkRepository {
     suspend fun setCardFrozen(cardId: String, frozen: Boolean): WalletResult<Unit>
     suspend fun selectCard(cardId: String): WalletResult<Unit> // persists default selection
     suspend fun topUp(cardId: String, amountCents: Long, operationId: String): WalletResult<Receipt>
-    suspend fun pay(cardId: String, merchantId: String, amountCents: Long, operationId: String): WalletResult<Receipt>
+    suspend fun pay(cardId: String, merchantId: String, amountCents: Long, operationId: String, couponId: String? = null): WalletResult<Receipt>
     suspend fun buyPass(cardId: String, operationId: String): WalletResult<Receipt>
     suspend fun updatePreferences(preferences: AppPreferences): WalletResult<Unit>
     suspend fun transformPreferences(change: (AppPreferences) -> AppPreferences): WalletResult<Unit>
@@ -264,7 +264,8 @@ enum class WalletError {
     INVALID_AMOUNT, INVALID_NAME, INVALID_PREFERENCES, NOT_FOUND, CARD_FROZEN,
     INSUFFICIENT_BALANCE, BALANCE_LIMIT, IDEMPOTENCY_CONFLICT, INVALID_OPERATION_ID,
     ALREADY_REDEEMED, OFFER_EXPIRED, PASS_ALREADY_ACTIVE, INVALID_MONTH,
-    ALREADY_CLAIMED, NOTHING_TO_CLAIM, STORAGE_ERROR
+    ALREADY_CLAIMED, NOTHING_TO_CLAIM, STORAGE_ERROR,
+    COUPON_NOT_REDEEMED, COUPON_ALREADY_USED, COUPON_WRONG_MERCHANT, COUPON_MIN_SPEND
 }
 sealed interface WalletResult<out T> {
     data class Success<T>(val value: T) : WalletResult<T>
@@ -326,7 +327,15 @@ data class TransportPass(val id: String, val cardId: String, val name: String,
 }
 data class Offer(val id: String, val merchantId: String, val title: String,
     val description: String, val terms: String, val expiresAt: Long,
-    val isFavorite: Boolean = false, val redeemedAt: Long? = null, val couponCode: String? = null)
+    val isFavorite: Boolean = false, val redeemedAt: Long? = null, val couponCode: String? = null,
+    val discountKind: CouponKind = CouponKind.NONE, val discountValue: Long = 0,
+    val minSpendCents: Long = 0, val maxDiscountCents: Long? = null,
+    val usedAt: Long? = null, val usedTransactionId: String? = null) {
+    fun status(now: Long = System.currentTimeMillis()): CouponStatus  // USED > EXPIRED > USABLE > UNREDEEMED
+    fun discountFor(subtotalCents: Long): Long  // FIXED/PERCENT, capped, never below one cent
+}
+enum class CouponKind { NONE, FIXED, PERCENT }
+enum class CouponStatus { UNREDEEMED, USABLE, USED, EXPIRED }
 data class SubsidyClaim(val id: String, val cardId: String, val month: String,
     val transportSpendingCents: Long, val amountCents: Long, val claimedAt: Long, val transactionId: String)
 data class TransactionFilter(val cardId: String? = null, val category: Category? = null,
@@ -360,7 +369,7 @@ Payment and pass purchase require an unfrozen card and enough balance **before**
 
 Passes last one calendar month in Hong Kong time; a card cannot buy another while one is active. All spending totals include payment and pass-purchase debits; credits/reloads are excluded. History is ordered by `createdAt DESC, ledgerSequence DESC`: an internal SQLite-generated sequence preserves real ledger insertion order when timestamps tie, including the reload after its debit and separate operations in one millisecond. This sequence does not change public model constructors or timestamps. History date bounds are inclusive start, exclusive end, and query searches merchant name case-insensitively. Fictional subsidy is 20% of a completed month's transport spending above HK$200, capped at HK$100, rounded down to cents; at most one claim per card/month, no real entitlement.
 
-Each wallet owns its saved offers, coupon codes and redemption timestamps. An offer can be redeemed once per wallet before expiry. Redemption records a localized in-app message, and has no effect on the payment amount. The version 6 upgrade leaves legacy shared redemptions and favorites unassigned because those rows have no recorded owner. Reminders are deduplicated by target/expiry; scheduler and OS notification permission work belong to the integration layer. Refresh is local and does not require network or reset balances, preferences, favorites, or redemptions.
+Each wallet owns its saved offers, coupon codes, redemption timestamps and spend state. An offer can be redeemed once per wallet before expiry. Redemption records a localized in-app message and does not change the balance; the coupon only reduces a payment when it is passed to `pay` as `couponId`. A coupon is spendable when it is redeemed in the paying wallet, not yet used there, unexpired, issued by the paying merchant, and the subtotal meets `minSpendCents`. The discount is `FIXED` (a flat amount) or `PERCENT` (a whole percentage of the subtotal, clamped to 0–100, capped by `maxDiscountCents`), and it is clamped so a payment still charges at least one cent. The receipt stores `discountCents` and `couponId`, the transaction is charged `subtotal − discount`, and the same commit stamps `usedAt`/`usedTransactionId` on that wallet's offer state, so the coupon reports `USED` afterwards and a second attempt fails with `COUPON_ALREADY_USED`. `couponId` is part of the idempotency fingerprint, so replaying an operation ID with a different coupon is rejected as `IDEMPOTENCY_CONFLICT`. The version 6 upgrade leaves legacy shared redemptions and favorites unassigned because those rows have no recorded owner; the version 7 upgrade adds the coupon columns and refreshes the seeded catalogue once without touching per-wallet state. Reminders are deduplicated by target/expiry; scheduler and OS notification permission work belong to the integration layer. Refresh is local and does not require network or reset balances, preferences, favorites, or redemptions.
 
 ## Build and ownership
 

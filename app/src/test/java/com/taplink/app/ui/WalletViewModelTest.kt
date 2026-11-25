@@ -282,7 +282,7 @@ private class DelayedRepository : TapLinkRepository {
     override fun observeTransactions(filter: TransactionFilter): Flow<List<WalletTransaction>> = transactions.map { WalletAnalytics.filter(it, filter) }
     override suspend fun renameCard(cardId: String, name: String): WalletResult<Unit> = error("Not used")
     override suspend fun setCardFrozen(cardId: String, frozen: Boolean): WalletResult<Unit> = error("Not used")
-    override suspend fun pay(cardId: String, merchantId: String, amountCents: Long, operationId: String): WalletResult<Receipt> = error("Not used")
+    override suspend fun pay(cardId: String, merchantId: String, amountCents: Long, operationId: String, couponId: String?): WalletResult<Receipt> = error("Not used")
     override suspend fun buyPass(cardId: String, operationId: String): WalletResult<Receipt> = error("Not used")
     override suspend fun markMessageRead(messageId: String, ownerId: String?): WalletResult<Unit> = error("Not used")
     override suspend fun markAllMessagesRead(ownerId: String?): WalletResult<Unit> = error("Not used")

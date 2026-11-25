@@ -26,7 +26,8 @@ object TapLinkContainer {
             TapLinkDatabase.MIGRATION_2_3,
             TapLinkDatabase.MIGRATION_3_4,
             TapLinkDatabase.MIGRATION_4_5,
-            TapLinkDatabase.MIGRATION_5_6
+            TapLinkDatabase.MIGRATION_5_6,
+            TapLinkDatabase.MIGRATION_6_7
         ).build()
             .also { databaseInstance = it }
     }

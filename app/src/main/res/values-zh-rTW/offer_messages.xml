@@ -1,11 +1,44 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="offer_demo_heading">示範優惠券</string>
-    <string name="offer_demo_intro">示範優惠券沒有現金價值，結帳時不會扣減付款金額。</string>
-    <string name="offer_demo_card">僅供示範 · 結帳無折扣</string>
-    <string name="offer_demo_terms">到期前只可兌換一次。此示範優惠券沒有現金價值，結帳時不提供折扣，商戶亦不接受使用。</string>
+    <string name="offer_demo_intro">兌換優惠券後，付款時選擇使用即可扣減該筆金額。</string>
+    <string name="offer_demo_card">示範優惠券</string>
+    <string name="offer_demo_terms">每個錢包限用一次。請先兌換，付款時在「優惠券」中選擇使用。</string>
     <string name="offer_coffee_break_title">咖啡小歇</string>
     <string name="offer_weekend_essentials_title">週末必需品</string>
     <string name="offer_next_chapter_title">翻開新一頁</string>
-    <string name="msg_offer_redeemed_body">請前往「更多 → 優惠與獎賞」，在相應的優惠卡片上查看優惠券代碼。</string>
+    <string name="msg_offer_redeemed_body">付款時在「優惠券」中選擇使用，也可在「優惠與獎賞」查看全部優惠券。</string>
+    <!-- 優惠券：先兌換，再於一筆付款中使用一次。 -->
+    <string name="coupon_section">優惠券</string>
+    <string name="coupon_none">不使用優惠券</string>
+    <string name="coupon_choose_merchant">先選擇商戶，即可看到該商戶的優惠券。</string>
+    <string name="coupon_none_for_merchant">該商戶暫無可使用的優惠券。</string>
+    <string name="coupon_browse">去看看優惠券</string>
+    <string name="coupon_status_usable">可使用</string>
+    <string name="coupon_status_used">已使用</string>
+    <string name="coupon_status_expired">已過期</string>
+    <string name="coupon_status_unredeemed">未兌換</string>
+    <string name="coupon_use">使用</string>
+    <string name="coupon_used_on">%1$s HKT 使用</string>
+    <string name="coupon_only_at">僅限 %1$s</string>
+    <string name="coupon_min_spend">消費滿 %1$s 可用</string>
+    <string name="coupon_fixed_label">減 %1$s</string>
+    <string name="coupon_percent_label">減 %1$d%%</string>
+    <string name="coupon_percent_cap_label">減 %1$d%% · 最多 %2$s</string>
+    <string name="coupon_subtotal">小計</string>
+    <string name="coupon_discount">優惠券折扣</string>
+    <string name="coupon_total">卡片扣款</string>
+    <string name="coupon_filter_usable">可使用</string>
+    <string name="coupon_receipt">優惠券</string>
+    <string name="coupon_saving">優惠金額</string>
+    <string name="offer_campus_lunch_title">午餐套餐</string>
+    <string name="offer_grocery_basket_title">大採購</string>
+    <string name="offer_metro_ride_title">單程車費</string>
+    <string name="offer_bus_day_title">巴士日票</string>
+    <string name="offer_print_pack_title">列印套餐</string>
+    <string name="offer_study_set_title">學習套裝</string>
+    <string name="offer_summer_splash_title">夏日優惠</string>
+    <!-- 優惠券篩選的空態。 -->
+    <string name="coupon_empty_usable">暫無可使用的優惠券</string>
+    <string name="coupon_empty_usable_body">先兌換一張優惠券，付款時即可選擇使用。</string>
 </resources>

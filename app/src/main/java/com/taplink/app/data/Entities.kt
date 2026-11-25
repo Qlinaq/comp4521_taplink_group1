@@ -56,6 +56,8 @@ data class PassEntity(@Embedded val value: TransportPass, val ownerId: String = 
     indices = [Index("merchantId")]
 )
 // Legacy embedded state is retained on disk for existing installs. Read only catalogue columns.
+// The spending fields (`usedAt`, `usedTransactionId`) live here for compatibility only: the real
+// per-wallet values are read from `offer_states`, so one wallet can never spend another's coupon.
 data class OfferEntity(@Embedded val value: Offer)
 
 @Entity(
@@ -68,7 +70,9 @@ data class OfferEntity(@Embedded val value: Offer)
 )
 data class OfferStateEntity(
     val ownerId: String, val offerId: String, val isFavorite: Boolean,
-    val redeemedAt: Long?, val couponCode: String?
+    val redeemedAt: Long?, val couponCode: String?,
+    /** When this wallet spent the coupon, and on which transaction. */
+    val usedAt: Long? = null, val usedTransactionId: String? = null
 )
 
 @Entity(

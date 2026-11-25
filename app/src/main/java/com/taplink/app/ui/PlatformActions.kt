@@ -27,6 +27,7 @@ data class PlatformActions(
     val openUrl: ((String) -> Unit)? = null,
     val openWhatsApp: ((String) -> Unit)? = null,
     val dial: ((String) -> Unit)? = null,
-    val speak: ((String) -> Unit)? = null,
+    /** Speaks the text; false means the device cannot speak it, so the caller must say so. */
+    val speak: ((String) -> Boolean)? = null,
     val stopSpeaking: (() -> Unit)? = null,
 )

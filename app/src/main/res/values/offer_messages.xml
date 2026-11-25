@@ -1,11 +1,44 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="offer_demo_heading">Demo coupons</string>
-    <string name="offer_demo_intro">Demo coupons have no cash value and give no discount at checkout.</string>
-    <string name="offer_demo_card">Demo only · No checkout discount</string>
-    <string name="offer_demo_terms">Redeem once before expiry. This demo coupon has no cash value and gives no checkout discount. Merchants do not accept it.</string>
+    <string name="offer_demo_intro">Redeem a coupon, then choose it when you pay a demo merchant.</string>
+    <string name="offer_demo_card">Demo coupon</string>
+    <string name="offer_demo_terms">One use per wallet. Redeem it first, then pick it under Coupon when you pay that merchant.</string>
     <string name="offer_coffee_break_title">A little coffee break</string>
     <string name="offer_weekend_essentials_title">Weekend essentials</string>
     <string name="offer_next_chapter_title">Your next chapter</string>
-    <string name="msg_offer_redeemed_body">Find your coupon code on the offer card in More → Offers &amp; rewards.</string>
+    <string name="msg_offer_redeemed_body">Choose it under Coupon when you pay that merchant, or open Offers &amp; rewards to see every coupon.</string>
+    <!-- Coupons: redeemed first, then spent on exactly one payment. -->
+    <string name="coupon_section">Coupon</string>
+    <string name="coupon_none">No coupon</string>
+    <string name="coupon_choose_merchant">Choose a merchant to see its coupons.</string>
+    <string name="coupon_none_for_merchant">No coupon is ready for this merchant.</string>
+    <string name="coupon_browse">Browse coupons</string>
+    <string name="coupon_status_usable">Ready to use</string>
+    <string name="coupon_status_used">Used</string>
+    <string name="coupon_status_expired">Expired</string>
+    <string name="coupon_status_unredeemed">Not redeemed</string>
+    <string name="coupon_use">Use</string>
+    <string name="coupon_used_on">Used %1$s HKT</string>
+    <string name="coupon_only_at">Only at %1$s</string>
+    <string name="coupon_min_spend">Spend %1$s or more</string>
+    <string name="coupon_fixed_label">%1$s off</string>
+    <string name="coupon_percent_label">%1$d%% off</string>
+    <string name="coupon_percent_cap_label">%1$d%% off · up to %2$s</string>
+    <string name="coupon_subtotal">Subtotal</string>
+    <string name="coupon_discount">Coupon discount</string>
+    <string name="coupon_total">Charge to card</string>
+    <string name="coupon_filter_usable">Usable</string>
+    <string name="coupon_receipt">Coupon</string>
+    <string name="coupon_saving">Coupon saving</string>
+    <string name="offer_campus_lunch_title">Lunch combo</string>
+    <string name="offer_grocery_basket_title">Big basket</string>
+    <string name="offer_metro_ride_title">Single ride</string>
+    <string name="offer_bus_day_title">Bus day saver</string>
+    <string name="offer_print_pack_title">Print pack</string>
+    <string name="offer_study_set_title">Study set</string>
+    <string name="offer_summer_splash_title">Summer splash</string>
+    <!-- Empty states for the coupon filter. -->
+    <string name="coupon_empty_usable">No coupon to use yet</string>
+    <string name="coupon_empty_usable_body">Redeem a coupon first; it can then be chosen when you pay.</string>
 </resources>

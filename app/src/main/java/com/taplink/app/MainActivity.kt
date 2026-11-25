@@ -51,6 +51,9 @@ class MainActivity : ComponentActivity() {
         notificationAsked = savedInstanceState?.getBoolean("notificationAsked") ?: false
         if (savedInstanceState == null) readDestination(intent)
         shake = LifecycleShakeObserver(this, this) { toggleBalance() }
+        // Bind the speech engine while the wallet loads: the first tap on the speaker button then
+        // starts speaking immediately instead of waiting for a service connection.
+        voice = VoiceReader(this)
         val actions = PlatformActions(
             requestLocation = { callback ->
                 locationJob?.cancel()
@@ -101,8 +104,9 @@ class MainActivity : ComponentActivity() {
             dial = { number -> if (!ExternalIntents.dial(this, number)) toast(R.string.toast_no_dialer) },
             speak = { text ->
                 val reader = voice ?: VoiceReader(this).also { voice = it }
-                reader.speak(text, preferences.language)
-                if (reader.lastError) toast(R.string.toast_voice_unavailable)
+                val spoken = reader.speak(text, preferences.language)
+                if (!spoken || reader.lastError) toast(R.string.toast_voice_unavailable)
+                spoken
             },
             stopSpeaking = { voice?.stop() },
         )

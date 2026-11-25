@@ -11,7 +11,10 @@ import kotlinx.coroutines.flow.Flow
 
 private const val OFFERS_FOR_OWNER =
     "SELECT o.id, o.merchantId, o.title, o.description, o.terms, o.expiresAt, " +
-        "COALESCE(s.isFavorite, 0) AS isFavorite, s.redeemedAt, s.couponCode " +
+        "COALESCE(s.isFavorite, 0) AS isFavorite, s.redeemedAt AS redeemedAt, " +
+        "s.couponCode AS couponCode, o.discountKind AS discountKind, o.discountValue AS discountValue, " +
+        "o.minSpendCents AS minSpendCents, o.maxDiscountCents AS maxDiscountCents, " +
+        "s.usedAt AS usedAt, s.usedTransactionId AS usedTransactionId " +
         "FROM offers o LEFT JOIN offer_states s ON s.offerId = o.id AND s.ownerId = :owner"
 
 /**
@@ -23,9 +26,16 @@ interface TapLinkDao {
     @Query("SELECT * FROM cards WHERE ownerId = :owner ORDER BY createdAt, id")
     fun observeCards(owner: String): Flow<List<CardEntity>>
 
+    /**
+     * The card this wallet is looking at. `preferences` is one row shared by every wallet, so after
+     * signing in as another account — or returning to the demo wallet — it still names a card that
+     * belongs to someone else. Falling back to the wallet's own first card keeps the dashboard from
+     * claiming "no cards yet" while three cards are sitting in the database.
+     */
     @Query(
-        "SELECT cards.* FROM cards INNER JOIN preferences ON cards.id = preferences.selectedCardId " +
-            "WHERE preferences.singletonId = 1 AND cards.ownerId = :owner"
+        "SELECT * FROM cards WHERE ownerId = :owner " +
+            "ORDER BY (id = (SELECT selectedCardId FROM preferences WHERE singletonId = 1)) DESC, " +
+            "createdAt, id LIMIT 1"
     )
     fun observeSelectedCard(owner: String): Flow<CardEntity?>
 
@@ -112,6 +122,8 @@ interface TapLinkDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE) suspend fun insertMerchants(merchants: List<MerchantEntity>)
     @Insert(onConflict = OnConflictStrategy.IGNORE) suspend fun insertLocations(locations: List<LocationEntity>)
     @Insert(onConflict = OnConflictStrategy.IGNORE) suspend fun insertOffers(offers: List<OfferEntity>)
+    /** Catalogue-only refresh: `offers` holds no per-wallet state, so this never touches a coupon. */
+    @Update suspend fun updateOffers(offers: List<OfferEntity>)
     @Insert(onConflict = OnConflictStrategy.IGNORE) suspend fun insertMessage(message: MessageEntity): Long
     @Upsert suspend fun saveOfferState(state: OfferStateEntity)
 

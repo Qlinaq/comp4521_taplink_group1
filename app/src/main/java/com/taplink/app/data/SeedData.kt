@@ -40,16 +40,52 @@ internal object SeedData {
     suspend fun ensureCatalog(dao: TapLinkDao, now: Long) {
         dao.insertMerchants(merchants.map(::MerchantEntity))
         dao.insertLocations(locations.map(::LocationEntity))
-        // IGNORE preserves original catalogue expiry dates on refresh.
-        dao.insertOffers(listOf(
-            Offer("coffee-break", "campus-cafe", "A little coffee break", "Save HK$8 on a demo cafe order.",
-                "Demo coupon only. One redemption. No cash value or real merchant acceptance.", now + 2 * DAY),
-            Offer("weekend-essentials", "harbour-grocer", "Weekend essentials", "Enjoy a fictional 10% grocery discount.",
-                "Educational demonstration only. One use; not deducted from wallet payments.", now + 14 * DAY),
-            Offer("next-chapter", "bay-books", "Your next chapter", "A demo HK$15 bookshop coupon.",
-                "No real goods, discounts, or merchant affiliation. Redeem once before expiry.", now + 30 * DAY)
-        ).map(::OfferEntity))
+        val coupons = coupons(now).map(::OfferEntity)
+        dao.insertOffers(coupons)
+        // An upgraded database already holds these rows, and IGNORE would leave them with the old
+        // "no discount" rule forever. The catalogue carries no per-wallet state, so rewriting it
+        // here cannot touch a saved, redeemed or spent coupon.
+        dao.updateOffers(coupons)
     }
+
+    /**
+     * The demo coupon catalogue. Three shapes are represented on purpose — a flat amount off, a
+     * percentage off (optionally capped), and a spend-threshold coupon — plus one row that has
+     * already expired, so every state the offers screen can show is reachable without waiting.
+     */
+    private fun coupons(now: Long) = listOf(
+        Offer("coffee-break", "campus-cafe", "A little coffee break", "Save HK$8 on a demo cafe order.",
+            "One use per wallet. Applies to a simulated payment at Campus Cafe.", now + 2 * DAY,
+            discountKind = CouponKind.FIXED, discountValue = 800),
+        Offer("campus-lunch", "campus-cafe", "Lunch combo", "15% off a demo lunch, up to HK$20.",
+            "Spend at least HK$40 at Campus Cafe in one simulated payment.", now + 10 * DAY,
+            discountKind = CouponKind.PERCENT, discountValue = 15, minSpendCents = 4000, maxDiscountCents = 2000),
+        Offer("weekend-essentials", "harbour-grocer", "Weekend essentials", "10% off demo groceries, up to HK$30.",
+            "One simulated payment at Harbour Grocer. Redeem before the expiry date.", now + 14 * DAY,
+            discountKind = CouponKind.PERCENT, discountValue = 10, maxDiscountCents = 3000),
+        Offer("grocery-basket", "harbour-grocer", "Big basket", "HK$30 off when you spend HK$200.",
+            "Spend at least HK$200 in one simulated payment at Harbour Grocer.", now + 7 * DAY,
+            discountKind = CouponKind.FIXED, discountValue = 3000, minSpendCents = 20000),
+        Offer("next-chapter", "bay-books", "Your next chapter", "HK$15 off a demo bookshop order.",
+            "One use per wallet at Bay Bookshop.", now + 30 * DAY,
+            discountKind = CouponKind.FIXED, discountValue = 1500),
+        Offer("study-set", "bay-books", "Study set", "20% off, up to HK$50, when you spend HK$100.",
+            "Spend at least HK$100 in one simulated payment at Bay Bookshop.", now + 21 * DAY,
+            discountKind = CouponKind.PERCENT, discountValue = 20, minSpendCents = 10000, maxDiscountCents = 5000),
+        Offer("metro-ride", "harbour-metro", "Single ride", "HK$5 off one demo metro fare.",
+            "One simulated payment at Harbour Metro.", now + 5 * DAY,
+            discountKind = CouponKind.FIXED, discountValue = 500),
+        Offer("bus-day", "city-bus", "Bus day saver", "HK$10 off a bus fare of HK$30 or more.",
+            "Spend at least HK$30 in one simulated payment at City Bus.", now + 9 * DAY,
+            discountKind = CouponKind.FIXED, discountValue = 1000, minSpendCents = 3000),
+        Offer("print-pack", "campus-print", "Print pack", "25% off printing, up to HK$15.",
+            "One simulated payment at Campus Print.", now + 25 * DAY,
+            discountKind = CouponKind.PERCENT, discountValue = 25, maxDiscountCents = 1500),
+        // Deliberately past its date: the offers screen must be able to show "expired" state.
+        Offer("summer-splash", "harbour-grocer", "Summer splash", "HK$20 off a demo grocery order.",
+            "This sample coupon has already expired.", now - DAY,
+            discountKind = CouponKind.FIXED, discountValue = 2000)
+    )
 
     suspend fun populate(dao: TapLinkDao, now: Long, owner: String = WalletOwner.GUEST) {
         ensureCatalog(dao, now)

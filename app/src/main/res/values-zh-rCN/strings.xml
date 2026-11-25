@@ -216,7 +216,7 @@
     <string name="ui_review_pass_purchase">确认购买月票</string>
     <string name="ui_sample_hours">示例营业时间</string>
     <string name="ui_save_amounts">保存金额</string>
-    <string name="ui_saved_offers_and_simulated_coupons">已保存优惠与模拟优惠券</string>
+    <string name="ui_saved_offers_and_simulated_coupons">已保存优惠券与演示折扣</string>
     <string name="ui_seeded_demonstration_locations_addresses_and">预设演示位置。地址与营业时间为示例内容，并非经过验证的实时目录。</string>
     <string name="ui_service_type">服务类型</string>
     <string name="ui_settings">设置</string>
@@ -287,7 +287,7 @@
     <string name="ui_locating">正在定位…</string>
     <string name="ui_make_your_next_tap">准备下一次刷卡。</string>
     <string name="ui_next_month">下个月</string>
-    <string name="ui_offer_expired">优惠已过期</string>
+    <string name="ui_offer_expired">优惠券已过期</string>
     <string name="ui_previous_month">上个月</string>
     <string name="ui_redeem">兑换</string>
     <string name="ui_redeem_demo_coupon">兑换演示优惠券</string>
@@ -377,11 +377,11 @@
     <string name="ui_chart_debits_only">仅计支出</string>
     <string name="ui_chart_description">支出图表。合计 %1$s。%2$s。不计入回赠和充值。</string>
     <string name="ui_expired_on">已于 %1$s 到期</string>
-    <string name="ui_demo_offer_expires_on">演示优惠 · %1$s 到期</string>
-    <string name="ui_demo_offer_expired_on">演示优惠 · 已于 %1$s 到期</string>
+    <string name="ui_demo_offer_expires_on">优惠券 · 有效至 %1$s</string>
+    <string name="ui_demo_offer_expired_on">优惠券 · 已于 %1$s 过期</string>
     <string name="ui_coupon_saved">已保存</string>
     <string name="ui_redeemed_demo_coupon">已兑换 · 演示优惠券：%1$s</string>
-    <string name="ui_redeemed_at_no_value">%1$s HKT · 此优惠券不具实际金钱价值。</string>
+    <string name="ui_redeemed_at_no_value">%1$s HKT · 已兑换</string>
     <string name="ui_offer_dialog_body">%1$s\n\n%2$s\n\n此演示优惠券只可兑换一次，并不具实际金钱价值。</string>
     <string name="ui_selected_card_note">已选卡片：%1$s。可在主页更换。</string>
     <string name="ui_one_calendar_month_price">一个自然月 · %1$s</string>
@@ -510,6 +510,7 @@
     <string name="a11y_voice_test">试听</string>
     <string name="a11y_voice_sample">你的 TapLink 卡片余额为港币一百二十元。按充值可加入模拟金额。</string>
     <string name="a11y_voice_note">朗读使用手机的语音引擎。如未安装中文语音，请在 Android 文字转语音设置中下载。</string>
+    <string name="a11y_voice_unavailable">此手机没有可用的语音引擎，无法朗读。请在 Android 文字转语音设置中安装。</string>
     <string name="a11y_voice_action">朗读此页</string>
     <string name="a11y_voice_default">此页暂无朗读摘要。</string>
     <string name="a11y_simple_flow">简易主页</string>
@@ -638,5 +639,5 @@
     <string name="toast_no_browser">没有可用的浏览器。</string>
     <string name="toast_no_whatsapp">未能打开 WhatsApp，请致电 2520 1314。</string>
     <string name="toast_no_dialer">没有可用的拨号应用，号码为 2520 1314。</string>
-    <string name="toast_voice_unavailable">未安装中文语音，朗读没有声音。</string>
+    <string name="toast_voice_unavailable">未安装语音引擎或中文语音，朗读没有声音。</string>
 </resources>

@@ -363,7 +363,7 @@ class RoomTapLinkRepositoryTest {
     }
 
     @Test fun couponsAndFavoritesPersistAndCannotBeRedeemedTwiceOrAfterExpiry() = runBlocking {
-        val offer = repository.offers.first().first()
+        val offer = repository.offers.first().first { it.id == "coffee-break" }
         value(repository.setOfferFavorite(offer.id, true))
         val redeemed = value(repository.redeemOffer(offer.id))
         assertTrue(redeemed.isFavorite)
@@ -372,13 +372,13 @@ class RoomTapLinkRepositoryTest {
         assertError(WalletError.ALREADY_REDEEMED, repository.redeemOffer(offer.id))
         value(repository.refreshDemoContent())
         assertEquals(redeemed, repository.offers.first().single { it.id == offer.id })
-        val other = repository.offers.first().first { it.id != offer.id }
+        val other = repository.offers.first().first { it.id == "summer-splash" }
         val expiredRepository = RoomTapLinkRepository(database) { other.expiresAt }
         assertError(WalletError.OFFER_EXPIRED, expiredRepository.redeemOffer(other.id))
     }
 
     @Test fun offerStateMessagesAndExpiryRemindersStayWithTheirWallet() = runBlocking {
-        val offer = repository.offers.first().first()
+        val offer = repository.offers.first().first { it.id == "coffee-break" }
         val guestLedger = repository.transactions.first()
         value(repository.setOfferFavorite(offer.id, true))
         assertEquals(1, value(repository.generateReminders(now)))
@@ -413,7 +413,7 @@ class RoomTapLinkRepositoryTest {
         withContext(Dispatchers.IO) {
             database.openHelper.writableDatabase.execSQL("DELETE FROM app_meta WHERE key = 'legacy-wallet-adopted'")
         }
-        val offer = repository.offers.first().first()
+        val offer = repository.offers.first().first { it.id == "coffee-break" }
         value(repository.setOfferFavorite(offer.id, true))
         assertEquals(1, value(repository.generateReminders(now)))
         value(repository.redeemOffer(offer.id))
@@ -426,7 +426,7 @@ class RoomTapLinkRepositoryTest {
     }
 
     @Test fun legacySharedOfferStateIsNeverShownInAWallet() = runBlocking {
-        val offer = repository.offers.first().first()
+        val offer = repository.offers.first().first { it.id == "coffee-break" }
         withContext(Dispatchers.IO) {
             database.openHelper.writableDatabase.execSQL(
                 "UPDATE offers SET isFavorite = 1, redeemedAt = ?, couponCode = 'DEMO-LEGACY' WHERE id = ?",
@@ -440,7 +440,7 @@ class RoomTapLinkRepositoryTest {
     }
 
     @Test fun remindersArePreferenceAwareAndDeduplicated() = runBlocking {
-        val offer = repository.offers.first().first()
+        val offer = repository.offers.first().first { it.id == "coffee-break" }
         value(repository.setOfferFavorite(offer.id, true))
         assertEquals(1, value(repository.generateReminders(now)))
         assertEquals(0, value(repository.generateReminders(now)))
@@ -476,7 +476,7 @@ class RoomTapLinkRepositoryTest {
             value(first.selectCard(card.id))
             value(first.updatePreferences(first.preferences.first().copy(theme = ThemeMode.DARK, widgetBalanceVisible = true)))
             val receipt = value(first.topUp(card.id, 12345, "disk-topup"))
-            val offer = value(first.redeemOffer(first.offers.first().first().id))
+            val offer = value(first.redeemOffer("coffee-break"))
             disk.close()
             disk = Room.databaseBuilder(context, TapLinkDatabase::class.java, name).build()
             val reopened = RoomTapLinkRepository(disk) { now }
@@ -493,6 +493,82 @@ class RoomTapLinkRepositoryTest {
             disk.close()
             context.deleteDatabase(name)
         }
+    }
+
+    @Test fun couponIsSpentOnceAndOnlyAtItsOwnMerchant() = runBlocking {
+        val card = freshCard(10000)
+        val coupon = value(repository.redeemOffer("coffee-break"))
+        assertError(WalletError.COUPON_WRONG_MERCHANT, repository.pay(card.id, "harbour-grocer", 5000, "wrong-shop", coupon.id))
+        assertError(WalletError.COUPON_NOT_REDEEMED, repository.pay(card.id, "campus-cafe", 5000, "not-redeemed", "campus-lunch"))
+
+        val receipt = value(repository.pay(card.id, "campus-cafe", 5000, "with-coupon", coupon.id))
+        assertEquals(800L, receipt.transaction.discountCents)
+        assertEquals(4200L, receipt.transaction.amountCents)
+        assertEquals(5000L, receipt.transaction.subtotalCents)
+        assertEquals(5800L, balance(card.id))
+
+        val spent = repository.offers.first().single { it.id == "coffee-break" }
+        assertEquals(CouponStatus.USED, spent.status(now))
+        assertEquals(receipt.transaction.id, spent.usedTransactionId)
+        // Spending it twice is refused, and the same confirmation replays instead of charging again.
+        assertError(WalletError.COUPON_ALREADY_USED, repository.pay(card.id, "campus-cafe", 5000, "second-use", coupon.id))
+        assertEquals(receipt, value(repository.pay(card.id, "campus-cafe", 5000, "with-coupon", coupon.id)))
+        assertError(WalletError.IDEMPOTENCY_CONFLICT, repository.pay(card.id, "campus-cafe", 5000, "with-coupon", null))
+        assertEquals(5800L, balance(card.id))
+    }
+
+    @Test fun thresholdCouponWaitsForItsMinimumSpend() = runBlocking {
+        val card = freshCard(30000)
+        val coupon = value(repository.redeemOffer("grocery-basket"))
+        assertError(WalletError.COUPON_MIN_SPEND, repository.pay(card.id, "harbour-grocer", 19999, "too-small", coupon.id))
+        val receipt = value(repository.pay(card.id, "harbour-grocer", 20000, "big-enough", coupon.id))
+        assertEquals(3000L, receipt.transaction.discountCents)
+        assertEquals(17000L, receipt.transaction.amountCents)
+        assertEquals(CouponStatus.USED, repository.offers.first().single { it.id == "grocery-basket" }.status(now))
+    }
+
+    @Test fun percentageCouponIsCappedAndNeverChargesLessThanOneCent() = runBlocking {
+        val card = freshCard(50000)
+        val lunch = value(repository.redeemOffer("campus-lunch"))
+        // 15% of HK$200 is HK$30, but this coupon is capped at HK$20.
+        val capped = value(repository.pay(card.id, "campus-cafe", 20000, "capped", lunch.id))
+        assertEquals(2000L, capped.transaction.discountCents)
+        assertEquals(18000L, capped.transaction.amountCents)
+
+        repository.useOwner("coupon-percent-account")
+        repository.initialize()
+        val account = repository.cards.first().single()
+        value(repository.topUp(account.id, 1000, "percent-fund"))
+        // HK$5 off a HK$1 fare would make the payment free; the demo charges one cent instead.
+        val ride = value(repository.redeemOffer("metro-ride"))
+        val tiny = value(repository.pay(account.id, "harbour-metro", 100, "tiny", ride.id))
+        assertEquals(99L, tiny.transaction.discountCents)
+        assertEquals(1L, tiny.transaction.amountCents)
+        assertEquals(999L, balance(account.id))
+    }
+
+    @Test fun aCouponSpentInOneWalletStaysAvailableInAnother() = runBlocking {
+        val card = freshCard(10000)
+        val guestCoupon = value(repository.redeemOffer("coffee-break"))
+        value(repository.pay(card.id, "campus-cafe", 5000, "guest-spends", guestCoupon.id))
+        assertEquals(CouponStatus.USED, repository.offers.first().single { it.id == "coffee-break" }.status(now))
+
+        repository.useOwner("coupon-account")
+        repository.initialize()
+        // A different wallet sees the shared catalogue with its own (empty) coupon state.
+        assertEquals(CouponStatus.UNREDEEMED, repository.offers.first().single { it.id == "coffee-break" }.status(now))
+        val accountCoupon = value(repository.redeemOffer("coffee-break"))
+        assertNotEquals(guestCoupon.couponCode, accountCoupon.couponCode)
+        val accountCard = repository.cards.first().single()
+        value(repository.topUp(accountCard.id, 10000, "account-fund"))
+        val accountReceipt = value(repository.pay(accountCard.id, "campus-cafe", 5000, "account-spends", accountCoupon.id))
+        assertEquals(800L, accountReceipt.transaction.discountCents)
+
+        repository.useOwner(WalletOwner.GUEST)
+        val guestView = repository.offers.first().single { it.id == "coffee-break" }
+        assertEquals(CouponStatus.USED, guestView.status(now))
+        assertEquals(guestCoupon.couponCode, guestView.couponCode)
+        assertEquals(1, repository.transactions.first().count { it.operationId == "guest-spends" })
     }
 
     private suspend fun freshCard(balance: Long): Card {

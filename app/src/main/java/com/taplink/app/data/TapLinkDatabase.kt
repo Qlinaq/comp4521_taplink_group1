@@ -17,6 +17,8 @@ import com.taplink.app.data.auth.AuthDao
  * Version 5 gives every wallet row an owner, so the demo wallet and each account keep separate
  * cards, balances, history and messages in one database file.
  * Version 6 separates per-wallet offer state from the shared demo catalogue.
+ * Version 7 lets a redeemed coupon be spent: the catalogue gains its discount rule, the per-wallet
+ * offer state records when it was used, and a payment records the coupon and the money it saved.
  * All migrations are additive; the wallet domain models are unchanged.
  */
 @Database(
@@ -24,7 +26,7 @@ import com.taplink.app.data.auth.AuthDao
         PreferencesEntity::class, MessageEntity::class, LocationEntity::class,
         PassEntity::class, OfferEntity::class, OfferStateEntity::class, SubsidyClaimEntity::class,
         OperationEntity::class, MetaEntity::class, AccountEntity::class, AuthCodeEntity::class],
-    version = 6, exportSchema = true
+    version = 7, exportSchema = true
 )
 abstract class TapLinkDatabase : RoomDatabase() {
     abstract fun dao(): TapLinkDao
@@ -87,6 +89,28 @@ abstract class TapLinkDatabase : RoomDatabase() {
                         "FOREIGN KEY(offerId) REFERENCES offers(id) ON UPDATE NO ACTION ON DELETE CASCADE)"
                 )
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_offer_states_offerId ON offer_states (offerId)")
+            }
+        }
+
+        val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Catalogue rule: what a coupon is worth. Defaults describe "no discount", which is
+                // exactly what the three rows written by version 6 were, so no row becomes wrong.
+                db.execSQL("ALTER TABLE `offers` ADD COLUMN `discountKind` TEXT NOT NULL DEFAULT 'NONE'")
+                db.execSQL("ALTER TABLE `offers` ADD COLUMN `discountValue` INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE `offers` ADD COLUMN `minSpendCents` INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE `offers` ADD COLUMN `maxDiscountCents` INTEGER NOT NULL DEFAULT 0")
+                // Mirrors of the per-wallet columns; legacy rows keep their historical values.
+                db.execSQL("ALTER TABLE `offers` ADD COLUMN `usedAt` INTEGER")
+                db.execSQL("ALTER TABLE `offers` ADD COLUMN `usedTransactionId` TEXT")
+                // Per wallet: when this coupon was spent. NULL means it is still available.
+                db.execSQL("ALTER TABLE `offer_states` ADD COLUMN `usedAt` INTEGER")
+                db.execSQL("ALTER TABLE `offer_states` ADD COLUMN `usedTransactionId` TEXT")
+                // A payment now records the coupon and the money it took off the merchant price.
+                db.execSQL("ALTER TABLE `transactions` ADD COLUMN `discountCents` INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE `transactions` ADD COLUMN `couponId` TEXT")
+                // Existing installs keep their old catalogue rows; the repository refreshes the
+                // discount rule and expiry for the known demo coupons on the next launch.
             }
         }
 

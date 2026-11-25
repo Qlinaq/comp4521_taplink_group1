@@ -15,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -129,11 +130,17 @@ fun PageHeading(eyebrow: String, title: String, subtitle: String? = null, hero: 
 }
 /** Small enclosed label: a chip rather than loose text on the page background. */
 @Composable
-fun Pill(text: String, modifier: Modifier = Modifier, icon: ImageVector? = null) {
+fun Pill(
+    text: String,
+    modifier: Modifier = Modifier,
+    icon: ImageVector? = null,
+    container: Color = MaterialTheme.colorScheme.surfaceVariant,
+    content: Color = MaterialTheme.colorScheme.onSurfaceVariant
+) {
     Surface(
         modifier = modifier,
-        color = MaterialTheme.colorScheme.surfaceVariant,
-        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        color = container,
+        contentColor = content,
         shape = RoundedCornerShape(50)
     ) {
         Row(

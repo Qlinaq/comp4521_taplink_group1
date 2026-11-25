@@ -62,6 +62,9 @@ class WalletViewModel(
         // Uncertain attempts must keep their exact fingerprint as well as their UUID.
         if (hasUnresolvedOperation() && key in operationInputKeys) return
         saved[key] = value
+        // A coupon is issued by one merchant. Changing the merchant must not leave a coupon attached
+        // that the new merchant cannot honour.
+        if (key == "operationMerchant") saved["operationCoupon"] = ""
     }
     fun value(key: String) = saved.get<String>(key).orEmpty()
     fun initialize() {
@@ -75,6 +78,10 @@ class WalletViewModel(
                     finally { busy.value = false }
                     if (hasUnresolvedOperation()) { invalidateReceiptLookup(); saved["route"] = "Review"; saved["backStack"] = "Home|" }
                 }
+                // `initialize` has written the rows, but the card flow still starts from an empty
+                // list. Waiting for its first emission stops the dashboard from flashing "your first
+                // card starts here" over a wallet that already has cards.
+                withTimeoutOrNull(2_000) { repository.cards.first() }
                 ready.value = true
                 if (receipt.value == null) loadCurrentReceipt()
             }
@@ -150,6 +157,7 @@ class WalletViewModel(
         set("operationKind", kind)
         set("operationCard", cardId ?: selectedCard.value?.id.orEmpty())
         set("operationMerchant", "")
+        set("operationCoupon", "")
         set("operationAmount", when { kind == "PASS" -> amountInput(PassCatalog.MONTHLY_PASS_PRICE_CENTS); amountCents != null -> amountInput(amountCents); else -> "" })
         set("operationMonth", month)
         set("operationId", "")
@@ -163,12 +171,18 @@ class WalletViewModel(
         if (hasUnresolvedOperation()) { navigate("Review"); return }
         val amount = Money.parseCents(value("operationAmount"))
         val card = cards.value.find { it.id == value("operationCard") }
+        val kind = value("operationKind")
+        val coupon = draftCoupon()
+        val discount = coupon?.let { it.discountFor(amount ?: 0L) } ?: 0L
+        val charge = (amount ?: 0L) - discount
         val error = when {
             card == null -> "Choose a card to continue."
             card.isFrozen -> "This card is frozen. Unfreeze it from Home first."
             amount == null -> "Enter a positive HKD amount with at most two decimal places."
-            value("operationKind") == "PAYMENT" && value("operationMerchant").isBlank() -> "Choose a merchant to continue."
-            value("operationKind") == "PAYMENT" && amount > card.balanceCents -> "This card has insufficient balance. Top up or choose another card."
+            kind == "PAYMENT" && value("operationMerchant").isBlank() -> "Choose a merchant to continue."
+            coupon != null && coupon.status() != CouponStatus.USABLE -> "This coupon is no longer available. Choose another one or pay without it."
+            coupon != null && discount <= 0 -> "This coupon needs a higher amount before it applies."
+            kind == "PAYMENT" && charge > card.balanceCents -> "This card has insufficient balance. Top up or choose another card."
             else -> ""
         }
         set("operationError", error)
@@ -177,6 +191,10 @@ class WalletViewModel(
         set("operationState", "REVIEW")
         navigate("Review")
     }
+
+    /** The coupon chosen in the payment form, but only while it can actually be spent. */
+    fun draftCoupon(): Offer? = value("operationCoupon").takeIf { it.isNotBlank() }
+        ?.let { id -> offers.value.find { it.id == id } }
     fun confirm() {
         if (busy.value || route.value != "Review" || operationState.value == "COMPLETE") return
         val id = value("operationId").ifBlank { UUID.randomUUID().toString().also { set("operationId", it) } }
@@ -192,7 +210,8 @@ class WalletViewModel(
             try {
                 val result = when (kind) {
                     "TOPUP" -> repository.topUp(card, amount, id)
-                    "PAYMENT" -> repository.pay(card, merchant, amount, id)
+                    "PAYMENT" -> repository.pay(card, merchant, amount, id,
+                        value("operationCoupon").takeIf { it.isNotBlank() })
                     "PASS" -> repository.buyPass(card, id)
                     "SUBSIDY" -> repository.claimSubsidy(card, month, id)
                     else -> WalletResult.Error(WalletError.INVALID_AMOUNT, "Please start a new transaction.")
@@ -296,6 +315,21 @@ class WalletViewModel(
 
     fun toggleOfferFavorite(offer: Offer) = act(action = { repository.setOfferFavorite(offer.id, !offer.isFavorite, ownerId) })
 
+    /**
+     * "Use" on a coupon opens a payment at the coupon's own merchant with it already selected, so
+     * the button leads to a payment that can actually apply it.
+     */
+    fun useCoupon(offer: Offer) {
+        if (busy.value || offer.status() != CouponStatus.USABLE) return
+        startOperation("PAYMENT")
+        // An unresolved request owns the form; do not overwrite its merchant or coupon.
+        if (route.value != "Form") return
+        set("operationMerchant", offer.merchantId)
+        set("operationCoupon", offer.id)
+    }
+
+    fun clearCoupon() { if (!busy.value) set("operationCoupon", "") }
+
     fun openOfferDialog(offerId: String) {
         if (busy.value) return
         set("offerDialogToken", UUID.randomUUID().toString())
@@ -351,7 +385,8 @@ class WalletViewModel(
     }
 
     private companion object {
-        val operationInputKeys = setOf("operationKind", "operationCard", "operationMerchant", "operationAmount", "operationMonth", "operationId")
+        // The coupon is part of the request identity: an unresolved attempt must keep it too.
+        val operationInputKeys = setOf("operationKind", "operationCard", "operationMerchant", "operationAmount", "operationMonth", "operationCoupon", "operationId")
     }
 }
 

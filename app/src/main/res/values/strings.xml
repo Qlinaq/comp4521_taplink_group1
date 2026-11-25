@@ -240,7 +240,7 @@
     <string name="ui_review_pass_purchase">Review pass purchase</string>
     <string name="ui_sample_hours">Sample hours</string>
     <string name="ui_save_amounts">Save amounts</string>
-    <string name="ui_saved_offers_and_simulated_coupons">Saved offers and simulated coupons</string>
+    <string name="ui_saved_offers_and_simulated_coupons">Saved coupons and demo discounts</string>
     <string name="ui_seeded_demonstration_locations_addresses_and">Seeded demonstration locations. Addresses and opening hours are sample content, not a verified live directory.</string>
     <string name="ui_service_type">Service type</string>
     <string name="ui_settings">Settings</string>
@@ -313,7 +313,7 @@
     <string name="ui_locating">Locating…</string>
     <string name="ui_make_your_next_tap">Make your next tap.</string>
     <string name="ui_next_month">Next month</string>
-    <string name="ui_offer_expired">Offer expired</string>
+    <string name="ui_offer_expired">Coupon expired</string>
     <string name="ui_previous_month">Previous month</string>
     <string name="ui_redeem">Redeem</string>
     <string name="ui_redeem_demo_coupon">Redeem demo coupon</string>
@@ -403,11 +403,11 @@
     <string name="ui_chart_debits_only">Debits only</string>
     <string name="ui_chart_description">Spending chart. %1$s total. %2$s. Credits and top-ups excluded.</string>
     <string name="ui_expired_on">Expired %1$s</string>
-    <string name="ui_demo_offer_expires_on">DEMO OFFER · Expires %1$s</string>
-    <string name="ui_demo_offer_expired_on">DEMO OFFER · Expired %1$s</string>
+    <string name="ui_demo_offer_expires_on">COUPON · Expires %1$s</string>
+    <string name="ui_demo_offer_expired_on">COUPON · Expired %1$s</string>
     <string name="ui_coupon_saved">Saved</string>
     <string name="ui_redeemed_demo_coupon">Redeemed · Demo coupon: %1$s</string>
-    <string name="ui_redeemed_at_no_value">%1$s HKT · This coupon has no real monetary value.</string>
+    <string name="ui_redeemed_at_no_value">%1$s HKT · Redeemed</string>
     <string name="ui_offer_dialog_body">%1$s\n\n%2$s\n\nYou can redeem this simulated coupon only once. It has no real monetary value.</string>
     <string name="ui_selected_card_note">Selected card: %1$s. Change it from Home.</string>
     <string name="ui_one_calendar_month_price">One calendar month · %1$s</string>
@@ -530,6 +530,7 @@
     <string name="a11y_voice_test">Try it</string>
     <string name="a11y_voice_sample">Your TapLink card balance is one hundred and twenty Hong Kong dollars. Tap top up to add simulated money.</string>
     <string name="a11y_voice_note">Read-aloud uses the phone speech engine. If no Chinese voice is installed, add one in Android text-to-speech settings.</string>
+    <string name="a11y_voice_unavailable">This phone has no speech engine available, so the text cannot be read aloud. Install one in Android text-to-speech settings.</string>
     <string name="a11y_voice_action">Read this screen aloud</string>
     <string name="a11y_voice_default">This screen has no summary yet.</string>
     <string name="a11y_simple_flow">Simplified home</string>
@@ -658,5 +659,5 @@
     <string name="toast_no_browser">No browser is available.</string>
     <string name="toast_no_whatsapp">WhatsApp could not be opened. Call 2520 1314 instead.</string>
     <string name="toast_no_dialer">No dialer app is available. The number is 2520 1314.</string>
-    <string name="toast_voice_unavailable">No Chinese voice is installed, so read-aloud is silent.</string>
+    <string name="toast_voice_unavailable">No speech voice is installed, so read-aloud is silent.</string>
 </resources>

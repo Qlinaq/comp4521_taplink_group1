@@ -35,6 +35,9 @@ Expected outcomes below derive from the proposal and implementation contract. Ex
 | P05 | Shake gesture | Only changes dashboard balance visibility; no payment and no listener off-screen. |
 | E01 | Pass purchase and repeat | One paid pass with valid dates; active duplicate is rejected without charge. |
 | E02 | Coupon favorite/redemption | Favorite persists; expired or already redeemed coupons cannot be redeemed again. |
+| E02b | Coupon spend | "Use" on a redeemed coupon opens the payment form with that merchant and coupon chosen; a HK$20 payment with a HK$5 coupon charges HK$15.00, the receipt shows subtotal/discount/coupon, and the coupon then reads Used. |
+| E02c | Coupon guards | A coupon for another merchant, below its minimum spend, already used, or unredeemed cannot be applied; a percentage coupon is capped and never leaves a zero charge. |
+| E02d | Per-wallet coupons | A coupon spent in the guest wallet still shows as usable after signing in to another account; signing out and back in shows that wallet's own states. |
 | E03 | Fictional subsidy | Completed-month rule and cap are exact; duplicate claim does not credit again. |
 | E04 | Demo catalogue refresh | Preserves existing card balances, preferences, favorites and redemptions. |
 

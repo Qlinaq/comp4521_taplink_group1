@@ -1,6 +1,7 @@
 package com.taplink.app.platform
 
 import android.content.Context
+import android.media.AudioAttributes
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import com.taplink.app.domain.AppLanguage
@@ -10,9 +11,11 @@ import java.util.concurrent.atomic.AtomicBoolean
 /**
  * Reads screen summaries aloud for users who cannot comfortably read small text.
  *
- * This is the platform speech engine, not a recording: it needs a Chinese voice installed on the
- * device. When no matching voice exists the reader reports [isAvailable] false and the UI says so
- * instead of silently doing nothing.
+ * This is the platform speech engine, not a recording: it needs a voice installed on the device.
+ * Two failure modes used to be indistinguishable from success — no engine at all (the manifest was
+ * missing the `TTS_SERVICE` query, so Android 11+ refused to bind one) and a missing voice for the
+ * interface language. [speak] therefore reports whether the utterance will actually be heard, and
+ * the caller shows a message instead of leaving the user in silence wondering what went wrong.
  */
 class VoiceReader(context: Context) : AutoCloseable {
     private val appContext = context.applicationContext
@@ -22,9 +25,15 @@ class VoiceReader(context: Context) : AutoCloseable {
     @Volatile var isAvailable: Boolean = false
         private set
     @Volatile var lastError: Boolean = false
-        private set
 
     init {
+        start()
+    }
+
+    /** Creates the engine. Called again by [speak] if the first attempt failed, so one bad start
+     *  (for example the service still being installed) does not silence the whole session. */
+    private fun start() {
+        lastError = false
         engine = TextToSpeech(appContext) { status ->
             val tts = engine
             if (status == TextToSpeech.SUCCESS && tts != null) {
@@ -35,11 +44,24 @@ class VoiceReader(context: Context) : AutoCloseable {
                     override fun onError(utteranceId: String?) { lastError = true }
                     override fun onError(utteranceId: String?, errorCode: Int) { lastError = true }
                 })
+                // Speech is a media stream: this keeps it audible on the volume the user actually
+                // adjusts, and marks it as accessibility output so other apps duck around it.
+                runCatching {
+                    tts.setAudioAttributes(
+                        AudioAttributes.Builder()
+                            .setUsage(AudioAttributes.USAGE_ASSISTANCE_ACCESSIBILITY)
+                            .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                            .build()
+                    )
+                }
                 ready.set(true)
+                isAvailable = tts.engines.isNotEmpty()
                 pending?.let { (text, locale) -> speakNow(text, locale) }
                 pending = null
             } else {
+                ready.set(false)
                 isAvailable = false
+                lastError = true
             }
         }
     }
@@ -57,15 +79,25 @@ class VoiceReader(context: Context) : AutoCloseable {
         AppLanguage.ENGLISH -> Locale.UK
     }
 
-    fun speak(text: String, language: AppLanguage) {
+    /**
+     * @return true when this text will be (or already was) spoken, false when the device cannot
+     * speak it at all — no engine bound, or no voice for the language and its fallback.
+     */
+    fun speak(text: String, language: AppLanguage): Boolean {
         val clean = text.trim().take(MAX_CHARS)
-        if (clean.isEmpty()) return
-        if (!ready.get()) { pending = clean to localeFor(language); return }
-        speakNow(clean, localeFor(language))
+        if (clean.isEmpty()) return true
+        if (!ready.get()) {
+            // The very first tap can arrive while the engine is still binding; queue it and retry
+            // the binding so a previous failure does not make every later tap silent.
+            pending = clean to localeFor(language)
+            if (engine == null) start()
+            return true
+        }
+        return speakNow(clean, localeFor(language))
     }
 
-    private fun speakNow(text: String, locale: Locale) {
-        val tts = engine ?: return
+    private fun speakNow(text: String, locale: Locale): Boolean {
+        val tts = engine ?: return false
         lastError = false
         val result = tts.setLanguage(locale)
         val usable = result != TextToSpeech.LANG_MISSING_DATA && result != TextToSpeech.LANG_NOT_SUPPORTED
@@ -76,9 +108,9 @@ class VoiceReader(context: Context) : AutoCloseable {
         } else {
             isAvailable = true
         }
-        if (!isAvailable) { lastError = true; return }
+        if (!isAvailable) { lastError = true; return false }
         tts.setSpeechRate(0.92f)
-        tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, UTTERANCE_ID)
+        return tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, UTTERANCE_ID) == TextToSpeech.SUCCESS
     }
 
     private fun fallbackLocaleFor(locale: Locale): Locale = when (locale.language) {

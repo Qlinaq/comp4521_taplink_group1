@@ -80,10 +80,22 @@ class RoomTapLinkRepository(
             if (ownerId in seededOwners) return@withLock
             database.withTransaction {
                 adoptLegacyWalletOnce(ownerId)
+                upgradeCouponCatalogueOnce()
                 if (dao.cardCount(ownerId) == 0) SeedData.populate(dao, clock(), ownerId)
             }
             seededOwners += ownerId
         }
+    }
+
+    /**
+     * Version 7 gave every demo coupon a discount rule. A database that already held the catalogue
+     * would keep the version 6 rows, which cannot reduce a payment, so the catalogue is rewritten
+     * exactly once. Coupon state lives in `offer_states`, so no saved or spent coupon is touched.
+     */
+    private suspend fun upgradeCouponCatalogueOnce() {
+        if (dao.meta(META_CATALOGUE_VERSION) == CATALOGUE_VERSION) return
+        SeedData.ensureCatalog(dao, clock())
+        dao.putMeta(MetaEntity(META_CATALOGUE_VERSION, CATALOGUE_VERSION))
     }
 
     /**
@@ -164,21 +176,24 @@ class RoomTapLinkRepository(
         val receipt = commit(card, Receipt(transaction, null, finalBalance), fingerprint)
         // The inbox keeps every notification; the notification category only decides whether an
         // OS-level alert is also posted.
-        recordTransactionMessage(transaction, card.name, amountCents)
+        recordTransactionMessage(transaction, card.name, amountCents, 0L)
         receipt
     }
 
     override suspend fun pay(
-        cardId: String, merchantId: String, amountCents: Long, operationId: String
-    ): WalletResult<Receipt> = debit(cardId, merchantId, amountCents, operationId, TransactionType.PAYMENT)
+        cardId: String, merchantId: String, amountCents: Long, operationId: String, couponId: String?
+    ): WalletResult<Receipt> = debit(cardId, merchantId, amountCents, operationId, TransactionType.PAYMENT, couponId)
 
     override suspend fun buyPass(cardId: String, operationId: String): WalletResult<Receipt> =
-        debit(cardId, null, PassCatalog.MONTHLY_PASS_PRICE_CENTS, operationId, TransactionType.PASS_PURCHASE)
+        debit(cardId, null, PassCatalog.MONTHLY_PASS_PRICE_CENTS, operationId, TransactionType.PASS_PURCHASE, null)
 
     private suspend fun debit(
-        cardId: String, merchantId: String?, amountCents: Long, operationId: String, type: TransactionType
+        cardId: String, merchantId: String?, amountCents: Long, operationId: String,
+        type: TransactionType, couponId: String?
     ): WalletResult<Receipt> = mutate {
-        val fingerprint = fingerprint(type.name, cardId, merchantId.orEmpty(), amountCents.toString())
+        // The coupon is part of the request identity: replaying the same confirmation with a
+        // different coupon must conflict instead of quietly returning the earlier receipt.
+        val fingerprint = fingerprint(type.name, cardId, merchantId.orEmpty(), amountCents.toString(), couponId.orEmpty())
         replay(operationId, fingerprint)?.let { return@mutate it }
         val card = requireCard(cardId)
         val now = clock()
@@ -186,14 +201,20 @@ class RoomTapLinkRepository(
         val merchant = if (type == TransactionType.PAYMENT) {
             dao.merchant(checkNotNull(merchantId))?.value ?: fail(WalletError.NOT_FOUND, "Select an available demo merchant.")
         } else null
-        val plan = WalletRules.payment(card.balanceCents, card.isFrozen, amountCents, prefs)
+        val coupon = if (type == TransactionType.PAYMENT && couponId != null) {
+            requireSpendableCoupon(couponId, checkNotNull(merchantId), amountCents, now)
+        } else null
+        val discount = coupon?.discountFor(amountCents) ?: 0L
+        val charge = amountCents - discount
+        val plan = WalletRules.payment(card.balanceCents, card.isFrozen, charge, prefs)
         if (type == TransactionType.PASS_PURCHASE && dao.activePass(cardId, now, owner) != null) {
             fail(WalletError.PASS_ALREADY_ACTIVE, "This card already has an active demo monthly pass.")
         }
-        val transaction = WalletTransaction(newId(), operationId, cardId, type, amountCents,
+        val transaction = WalletTransaction(newId(), operationId, cardId, type, charge,
             plan.balanceAfterPaymentCents, merchant?.id, merchant?.name ?: "TapLink Demo Transport",
             merchant?.category ?: Category.TRANSPORT, now,
-            if (type == TransactionType.PAYMENT) "Simulated merchant payment." else "Simulated monthly pass; not a real transport ticket.")
+            if (type == TransactionType.PAYMENT) "Simulated merchant payment." else "Simulated monthly pass; not a real transport ticket.",
+            discount, coupon?.id)
         val reload = if (plan.reloadCents > 0) WalletTransaction(newId(), operationId, cardId,
             TransactionType.AUTO_RELOAD, plan.reloadCents, plan.finalBalanceCents, null,
             "Automatic demo reload", Category.OTHER, now, "One automatic reload after an affordable debit.") else null
@@ -201,7 +222,13 @@ class RoomTapLinkRepository(
             PassCatalog.MONTHLY_PASS_NAME, amountCents, now,
             Instant.ofEpochMilli(now).atZone(zone).plusMonths(1).toInstant().toEpochMilli(), transaction.id) else null
         val receipt = commit(card, Receipt(transaction, reload, plan.finalBalanceCents, pass), fingerprint)
-        recordTransactionMessage(transaction, card.name, amountCents)
+        // Spending the coupon and recording the payment are one transaction: a coupon can never be
+        // consumed by a payment that was rolled back, and never spent twice.
+        if (coupon != null) {
+            dao.saveOfferState(OfferStateEntity(owner, coupon.id, coupon.isFavorite, coupon.redeemedAt,
+                coupon.couponCode, now, transaction.id))
+        }
+        recordTransactionMessage(transaction, card.name, charge, discount)
         if (plan.shouldAlert) {
             dao.insertMessage(MessageEntity(WalletMessage("low-balance:$operationId", "Low demo balance",
                 "${card.name} has ${Money.format(plan.finalBalanceCents)} remaining after your simulated payment.",
@@ -212,13 +239,32 @@ class RoomTapLinkRepository(
     }
 
     /**
+     * A coupon may only be spent by the wallet that redeemed it, at the merchant that issued it,
+     * once, before it expires, and only when the price reaches its minimum spend.
+     */
+    private suspend fun requireSpendableCoupon(couponId: String, merchantId: String, subtotalCents: Long, now: Long): Offer {
+        val offer = requireOffer(couponId, owner)
+        if (offer.merchantId != merchantId) {
+            fail(WalletError.COUPON_WRONG_MERCHANT, "This coupon can only be used at its own demo merchant.")
+        }
+        if (offer.usedAt != null) fail(WalletError.COUPON_ALREADY_USED, "This coupon has already been used.")
+        if (offer.redeemedAt == null) fail(WalletError.COUPON_NOT_REDEEMED, "Redeem this coupon before using it.")
+        if (now >= offer.expiresAt) fail(WalletError.OFFER_EXPIRED, "This coupon has expired.")
+        if (offer.discountFor(subtotalCents) <= 0) {
+            fail(WalletError.COUPON_MIN_SPEND, "This coupon needs a higher amount before it applies.")
+        }
+        return offer
+    }
+
+    /**
      * English text is stored so the row is still readable in a database dump; [MessageKind] and the
      * amount let the UI render the same event in the chosen interface language.
      */
     private suspend fun recordTransactionMessage(
         transaction: WalletTransaction,
         cardName: String,
-        amountCents: Long
+        amountCents: Long,
+        discountCents: Long
     ) {
         val title = when (transaction.type) {
             TransactionType.TOP_UP -> "Top-up completed"
@@ -228,7 +274,10 @@ class RoomTapLinkRepository(
         val body = when (transaction.type) {
             TransactionType.TOP_UP -> "${Money.format(amountCents)} was added to $cardName."
             TransactionType.PASS_PURCHASE -> "${Money.format(amountCents)} was used for ${PassCatalog.MONTHLY_PASS_NAME} on $cardName."
-            else -> "${Money.format(amountCents)} was paid from $cardName to ${transaction.merchantName}."
+            else -> buildString {
+                append("${Money.format(amountCents)} was paid from $cardName to ${transaction.merchantName}.")
+                if (discountCents > 0) append(" A coupon saved ${Money.format(discountCents)}.")
+            }
         }
         val kind = when (transaction.type) {
             TransactionType.TOP_UP -> MessageKind.TOP_UP
@@ -285,18 +334,21 @@ class RoomTapLinkRepository(
     override suspend fun setOfferFavorite(offerId: String, favorite: Boolean, ownerId: String?): WalletResult<Unit> =
         mutateForOwner(ownerId) { currentOwner ->
             val offer = requireOffer(offerId, currentOwner)
-            dao.saveOfferState(OfferStateEntity(currentOwner, offerId, favorite, offer.redeemedAt, offer.couponCode))
+            // Favourite is only one field: the redeemed and spent state must survive the rewrite.
+            dao.saveOfferState(OfferStateEntity(currentOwner, offerId, favorite, offer.redeemedAt,
+                offer.couponCode, offer.usedAt, offer.usedTransactionId))
         }
 
     override suspend fun redeemOffer(offerId: String, ownerId: String?): WalletResult<Offer> = mutateForOwner(ownerId) { currentOwner ->
         val offer = requireOffer(offerId, currentOwner)
-        if (offer.redeemedAt != null) fail(WalletError.ALREADY_REDEEMED, "This demo coupon has already been redeemed.")
+        if (offer.usedAt != null || offer.redeemedAt != null) fail(WalletError.ALREADY_REDEEMED, "This demo coupon has already been redeemed.")
         val now = clock()
         if (now >= offer.expiresAt) fail(WalletError.OFFER_EXPIRED, "This demo offer has expired.")
         val code = "DEMO-${newId().take(8).uppercase()}"
+        // Redemption only makes the coupon spendable; `usedAt` stays empty until a payment uses it.
         dao.saveOfferState(OfferStateEntity(currentOwner, offerId, offer.isFavorite, now, code))
         dao.insertMessage(MessageEntity(WalletMessage(
-            newId(), "Demo coupon redeemed", "See the coupon code under Offers & rewards.",
+            newId(), "Demo coupon redeemed", "Use it at checkout under Pay, or open Offers & rewards.",
             MessageType.INFO, now, false, kind = MessageKind.OFFER_REDEEMED
         ), currentOwner))
         offer.copy(redeemedAt = now, couponCode = code)
@@ -394,6 +446,9 @@ class RoomTapLinkRepository(
     private companion object {
         /** Set once, after the demo wallet has been handed to the first signed-in account. */
         const val META_LEGACY_ADOPTED = "legacy-wallet-adopted"
+        /** Which demo-coupon catalogue this database has already been upgraded to. */
+        const val META_CATALOGUE_VERSION = "coupon-catalogue-version"
+        const val CATALOGUE_VERSION = "7"
     }
 
     private fun fingerprint(vararg parts: String): String = parts.joinToString("") { "${it.length}:$it" }
