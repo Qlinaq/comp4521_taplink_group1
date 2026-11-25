@@ -55,7 +55,21 @@ data class PassEntity(@Embedded val value: TransportPass, val ownerId: String = 
     foreignKeys = [ForeignKey(entity = MerchantEntity::class, parentColumns = ["id"], childColumns = ["merchantId"])],
     indices = [Index("merchantId")]
 )
+// Legacy embedded state is retained on disk for existing installs. Read only catalogue columns.
 data class OfferEntity(@Embedded val value: Offer)
+
+@Entity(
+    tableName = "offer_states", primaryKeys = ["ownerId", "offerId"],
+    foreignKeys = [ForeignKey(
+        entity = OfferEntity::class, parentColumns = ["id"], childColumns = ["offerId"],
+        onDelete = ForeignKey.CASCADE
+    )],
+    indices = [Index("offerId")]
+)
+data class OfferStateEntity(
+    val ownerId: String, val offerId: String, val isFavorite: Boolean,
+    val redeemedAt: Long?, val couponCode: String?
+)
 
 @Entity(
     tableName = "subsidy_claims", primaryKeys = ["id"],

@@ -17,7 +17,8 @@ enum class MessageType { INFO, LOW_BALANCE, PASS_EXPIRY, OFFER_EXPIRY, TRANSACTI
  * text from resources; legacy rows fall back to their stored text.
  */
 enum class MessageKind {
-    WELCOME, LOW_BALANCE, TOP_UP, PAYMENT, PASS_PURCHASE, PASS_EXPIRY, OFFER_EXPIRY, SERVICE
+    WELCOME, LOW_BALANCE, TOP_UP, PAYMENT, PASS_PURCHASE, PASS_EXPIRY, OFFER_EXPIRY, SERVICE,
+    OFFER_REDEEMED
 }
 
 enum class WalletError {

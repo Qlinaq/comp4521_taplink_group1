@@ -31,7 +31,7 @@
     <string name="auth_sign_up_subtitle">One identifier is enough: an email address or a Hong Kong phone number.</string>
     <string name="auth_name_label">Display name</string>
     <string name="auth_confirm_password_label">Confirm password</string>
-    <string name="auth_password_rules">At least 8 characters, including a letter and a digit.</string>
+    <string name="auth_password_rules">Use 8–128 characters with at least one letter and one digit (0–9). Symbols are optional. Avoid common passwords, the full part before @ in your email (if it has at least 3 characters), and your full international phone number.</string>
     <string name="auth_sign_up_terms">This is a course prototype. No real money, bank account or Octopus connection is involved.</string>
     <string name="auth_sign_up_submit">Create account</string>
     <string name="auth_have_account">Already registered? Sign in</string>
@@ -54,7 +54,7 @@
     <string name="auth_reset_send">Send reset code</string>
     <string name="auth_reset_confirm_eyebrow">New password</string>
     <string name="auth_reset_confirm_title">Choose a new password.</string>
-    <string name="auth_reset_confirm_subtitle">Enter the code sent to %1$s, then pick a password you have not used here before.</string>
+    <string name="auth_reset_confirm_subtitle">Enter the code sent to %1$s, then choose a password different from your current one.</string>
     <string name="auth_new_password_label">New password</string>
     <string name="auth_reset_submit">Reset password</string>
 
@@ -99,7 +99,7 @@
     <string name="err_invalid_identifier">Enter a valid email address or Hong Kong phone number.</string>
     <string name="err_invalid_name">Enter a display name of up to 60 characters.</string>
     <string name="err_identifier_taken">That identifier already has an account.</string>
-    <string name="err_invalid_password">Choose a stronger password: at least 8 characters with a letter and a digit.</string>
+    <string name="err_invalid_password">Check the password rules. In particular, avoid common passwords and the part before @ in your email. A reset or change requires a different password.</string>
     <string name="err_wrong_credentials">That identifier and password do not match.</string>
     <string name="err_account_locked">Too many attempts. Wait a minute before trying again.</string>
     <string name="err_account_not_found">No account uses that identifier.</string>

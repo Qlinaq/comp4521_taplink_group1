@@ -82,6 +82,8 @@ fun TapLinkApp(
     destination: String? = null,
     owner: String = WalletOwner.GUEST
 ) {
+    // Returning to an existing ViewModel does not run its initializer again.
+    LaunchedEffect(repository, owner) { repository.useOwner(owner) }
     val vm: WalletViewModel = viewModel(
         key = "wallet-$owner",
         factory = viewModelFactory { initializer { WalletViewModel(repository, createSavedStateHandle(), owner) } }

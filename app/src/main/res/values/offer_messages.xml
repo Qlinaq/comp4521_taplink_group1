@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="offer_demo_heading">Demo coupons</string>
+    <string name="offer_demo_intro">Demo coupons have no cash value and give no discount at checkout.</string>
+    <string name="offer_demo_card">Demo only · No checkout discount</string>
+    <string name="offer_demo_terms">Redeem once before expiry. This demo coupon has no cash value and gives no checkout discount. Merchants do not accept it.</string>
+    <string name="offer_coffee_break_title">A little coffee break</string>
+    <string name="offer_weekend_essentials_title">Weekend essentials</string>
+    <string name="offer_next_chapter_title">Your next chapter</string>
+    <string name="msg_offer_redeemed_body">Find your coupon code on the offer card in More → Offers &amp; rewards.</string>
+</resources>

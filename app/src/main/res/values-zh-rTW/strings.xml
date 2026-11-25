@@ -25,7 +25,7 @@
     <string name="auth_sign_up_subtitle">一個識別碼已足夠：電郵地址或香港電話號碼。</string>
     <string name="auth_name_label">顯示名稱</string>
     <string name="auth_confirm_password_label">確認密碼</string>
-    <string name="auth_password_rules">至少 8 個字元，須包含字母與數字。</string>
+    <string name="auth_password_rules">密碼須為 8–128 個字元，至少含一個字母和一個數字（0–9）。符號可選。請避開常用密碼、電郵 @ 前的完整內容（至少 3 個字元），以及含區碼的完整國際手機號碼。</string>
     <string name="auth_sign_up_terms">本程式為課程原型，不涉及真實金錢、銀行帳戶或八達通連線。</string>
     <string name="auth_sign_up_submit">建立帳戶</string>
     <string name="auth_have_account">已註冊？登入</string>
@@ -44,7 +44,7 @@
     <string name="auth_reset_send">發送重設驗證碼</string>
     <string name="auth_reset_confirm_eyebrow">新密碼</string>
     <string name="auth_reset_confirm_title">設定新密碼。</string>
-    <string name="auth_reset_confirm_subtitle">輸入發送至 %1$s 的驗證碼，然後設定一組從未在此使用的密碼。</string>
+    <string name="auth_reset_confirm_subtitle">輸入發送至 %1$s 的驗證碼，然後設定一組與目前密碼不同的新密碼。</string>
     <string name="auth_new_password_label">新密碼</string>
     <string name="auth_reset_submit">重設密碼</string>
     <string name="account_open">帳戶</string>
@@ -79,7 +79,7 @@
     <string name="err_invalid_identifier">請輸入有效的電郵地址或香港電話號碼。</string>
     <string name="err_invalid_name">請輸入不超過 60 個字元的顯示名稱。</string>
     <string name="err_identifier_taken">此識別碼已有帳戶。</string>
-    <string name="err_invalid_password">請設定更強的密碼：至少 8 個字元並包含字母與數字。</string>
+    <string name="err_invalid_password">請檢查密碼要求，尤其是別用常用密碼或包含電郵 @ 前的完整內容。重設或更改密碼時，請使用與目前密碼不同的新密碼。</string>
     <string name="err_wrong_credentials">識別碼與密碼不相符。</string>
     <string name="err_account_locked">嘗試次數過多，請一分鐘後再試。</string>
     <string name="err_account_not_found">沒有帳戶使用此識別碼。</string>

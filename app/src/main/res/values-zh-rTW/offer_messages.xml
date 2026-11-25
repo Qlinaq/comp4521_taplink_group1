@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="offer_demo_heading">示範優惠券</string>
+    <string name="offer_demo_intro">示範優惠券沒有現金價值，結帳時不會扣減付款金額。</string>
+    <string name="offer_demo_card">僅供示範 · 結帳無折扣</string>
+    <string name="offer_demo_terms">到期前只可兌換一次。此示範優惠券沒有現金價值，結帳時不提供折扣，商戶亦不接受使用。</string>
+    <string name="offer_coffee_break_title">咖啡小歇</string>
+    <string name="offer_weekend_essentials_title">週末必需品</string>
+    <string name="offer_next_chapter_title">翻開新一頁</string>
+    <string name="msg_offer_redeemed_body">請前往「更多 → 優惠與獎賞」，在相應的優惠卡片上查看優惠券代碼。</string>
+</resources>

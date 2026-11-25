@@ -16,9 +16,11 @@ interface TapLinkRepository {
     val merchants: Flow<List<Merchant>>
     val locations: Flow<List<ServiceLocation>>
     val messages: Flow<List<WalletMessage>>
+    fun observeMessages(ownerId: String): Flow<List<WalletMessage>> = messages
     val preferences: Flow<AppPreferences>
     val passes: Flow<List<TransportPass>>
     val offers: Flow<List<Offer>>
+    fun observeOffers(ownerId: String): Flow<List<Offer>> = offers
     val subsidyClaims: Flow<List<SubsidyClaim>>
 
     suspend fun initialize()
@@ -38,10 +40,10 @@ interface TapLinkRepository {
     suspend fun updatePreferences(preferences: AppPreferences): WalletResult<Unit>
     /** Applies a quick, side-effect-free transform to the latest preferences inside one transaction. */
     suspend fun transformPreferences(change: (AppPreferences) -> AppPreferences): WalletResult<Unit>
-    suspend fun markMessageRead(messageId: String): WalletResult<Unit>
-    suspend fun markAllMessagesRead(): WalletResult<Unit>
-    suspend fun setOfferFavorite(offerId: String, favorite: Boolean): WalletResult<Unit>
-    suspend fun redeemOffer(offerId: String): WalletResult<Offer>
+    suspend fun markMessageRead(messageId: String, ownerId: String? = null): WalletResult<Unit>
+    suspend fun markAllMessagesRead(ownerId: String? = null): WalletResult<Unit>
+    suspend fun setOfferFavorite(offerId: String, favorite: Boolean, ownerId: String? = null): WalletResult<Unit>
+    suspend fun redeemOffer(offerId: String, ownerId: String? = null): WalletResult<Offer>
     suspend fun claimSubsidy(cardId: String, month: String, operationId: String): WalletResult<Receipt>
     suspend fun refreshDemoContent(): WalletResult<Unit>
     suspend fun generateReminders(now: Long = System.currentTimeMillis()): WalletResult<Int>

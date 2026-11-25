@@ -25,7 +25,7 @@
     <string name="auth_sign_up_subtitle">一个标识即可：电子邮箱或香港手机号码。</string>
     <string name="auth_name_label">显示名称</string>
     <string name="auth_confirm_password_label">确认密码</string>
-    <string name="auth_password_rules">至少 8 个字符，须包含字母和数字。</string>
+    <string name="auth_password_rules">密码须为 8–128 个字符，至少含一个字母和一个数字（0–9）。符号可选。请避开常用密码、邮箱 @ 前的完整内容（至少 3 个字符）和带区号的完整国际手机号。</string>
     <string name="auth_sign_up_terms">本程序为课程原型，不涉及真实资金、银行账户或八达通连接。</string>
     <string name="auth_sign_up_submit">创建账户</string>
     <string name="auth_have_account">已注册？登录</string>
@@ -44,7 +44,7 @@
     <string name="auth_reset_send">发送重置验证码</string>
     <string name="auth_reset_confirm_eyebrow">新密码</string>
     <string name="auth_reset_confirm_title">设置新密码。</string>
-    <string name="auth_reset_confirm_subtitle">输入发送至 %1$s 的验证码，然后设置一个从未在此使用过的密码。</string>
+    <string name="auth_reset_confirm_subtitle">输入发送至 %1$s 的验证码，然后设置一个不同于当前密码的新密码。</string>
     <string name="auth_new_password_label">新密码</string>
     <string name="auth_reset_submit">重置密码</string>
     <string name="account_open">账户</string>
@@ -79,7 +79,7 @@
     <string name="err_invalid_identifier">请输入有效的电子邮箱或香港手机号码。</string>
     <string name="err_invalid_name">请输入不超过 60 个字符的显示名称。</string>
     <string name="err_identifier_taken">该标识已注册账户。</string>
-    <string name="err_invalid_password">请设置更强的密码：至少 8 个字符并包含字母和数字。</string>
+    <string name="err_invalid_password">请检查密码要求，尤其是别用常用密码或包含邮箱 @ 前的完整内容。重置或修改密码时，请使用不同于当前密码的新密码。</string>
     <string name="err_wrong_credentials">标识与密码不匹配。</string>
     <string name="err_account_locked">尝试次数过多，请一分钟后再试。</string>
     <string name="err_account_not_found">没有账户使用该标识。</string>

@@ -69,7 +69,11 @@ fun OffersScreen(vm: WalletViewModel) {
     val confirmId by vm.offerDialog.collectAsStateWithLifecycle()
     var detailId by rememberSaveable { mutableStateOf("") }
     ScreenColumn {
-        PageHeading( stringResource(R.string.ui_offers_rewards) , stringResource(R.string.ui_small_treats_on_us) , stringResource(R.string.ui_discover_sample_offers_from_taplink_demo_mer) )
+        PageHeading(
+            stringResource(R.string.ui_offers_rewards),
+            stringResource(R.string.offer_demo_heading),
+            stringResource(R.string.offer_demo_intro)
+        )
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             FilterChip(!favorites, { favorites = false }, label = { Text(stringResource(R.string.ui_all_offers)) })
             FilterChip(favorites, { favorites = true }, label = { Text(stringResource(R.string.ui_saved)) }, leadingIcon = { Icon(Icons.Outlined.FavoriteBorder, null, Modifier.size(18.dp)) })
@@ -82,14 +86,16 @@ fun OffersScreen(vm: WalletViewModel) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text(merchants.find { it.id == offer.merchantId }?.name ?: stringResource(R.string.ui_taplink_demo_merchant), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.secondary)
-                        Text(offer.title, style = MaterialTheme.typography.titleLarge)
+                        Text(offerDisplayTitle(offer), style = MaterialTheme.typography.titleLarge)
                     }
-                    IconButton({ vm.act(action = { vm.repository.setOfferFavorite(offer.id, !offer.isFavorite) }) }, enabled = !busy) { Icon(if (offer.isFavorite) Icons.Outlined.Favorite else Icons.Outlined.FavoriteBorder, if (offer.isFavorite) stringResource(R.string.ui_remove_saved_offer) else stringResource(R.string.ui_save_offer), tint = MaterialTheme.colorScheme.primary) }
+                    IconButton({ vm.toggleOfferFavorite(offer) }, enabled = !busy) { Icon(if (offer.isFavorite) Icons.Outlined.Favorite else Icons.Outlined.FavoriteBorder, if (offer.isFavorite) stringResource(R.string.ui_remove_saved_offer) else stringResource(R.string.ui_save_offer), tint = MaterialTheme.colorScheme.primary) }
                 }
-                Text(offer.description, style = MaterialTheme.typography.bodyMedium)
+                Text(stringResource(R.string.offer_demo_card), style = MaterialTheme.typography.bodyMedium)
                 Text(stringResource(if (expired) R.string.ui_demo_offer_expired_on else R.string.ui_demo_offer_expires_on, shortDate(offer.expiresAt)), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 TextButton({ detailId = if (detailId == offer.id) "" else offer.id }) { Text(if (detailId == offer.id) stringResource(R.string.ui_hide_terms) else stringResource(R.string.ui_view_terms)) }
-                if (detailId == offer.id) Text(offer.terms, style = MaterialTheme.typography.bodySmall)
+                if (detailId == offer.id) {
+                    Text(stringResource(R.string.offer_demo_terms), style = MaterialTheme.typography.bodySmall)
+                }
                 if (offer.redeemedAt != null) {
                     Notice(stringResource(R.string.ui_redeemed_demo_coupon, offer.couponCode ?: stringResource(R.string.ui_coupon_saved)))
                     Text(stringResource(R.string.ui_redeemed_at_no_value, dateTime(offer.redeemedAt)), style = MaterialTheme.typography.bodySmall)
@@ -98,5 +104,32 @@ fun OffersScreen(vm: WalletViewModel) {
         }
     }
     val confirm = offers.find { it.id == confirmId }
-    if (confirm != null) AlertDialog(onDismissRequest = vm::dismissOfferDialog, title = { Text(stringResource(R.string.ui_redeem_this_demo_offer)) }, text = { Text(stringResource(R.string.ui_offer_dialog_body, confirm.title, confirm.terms)) }, confirmButton = { TextButton(vm::submitOfferDialog, enabled = !busy) { Text(if (busy) stringResource(R.string.ui_redeeming) else stringResource(R.string.ui_redeem)) } }, dismissButton = { TextButton(vm::dismissOfferDialog, enabled = !busy) { Text(stringResource(R.string.account_cancel)) } })
+    if (confirm != null) {
+        // The dialog window can use the system locale. Resolve copy in the wallet locale first.
+        val title = stringResource(R.string.ui_redeem_this_demo_offer)
+        val offerTitle = offerDisplayTitle(confirm)
+        val terms = stringResource(R.string.offer_demo_terms)
+        val confirmText = stringResource(if (busy) R.string.ui_redeeming else R.string.ui_redeem)
+        val cancelText = stringResource(R.string.account_cancel)
+        AlertDialog(
+            onDismissRequest = vm::dismissOfferDialog,
+            title = { Text(title) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(offerTitle)
+                    Text(terms)
+                }
+            },
+            confirmButton = { TextButton(vm::submitOfferDialog, enabled = !busy) { Text(confirmText) } },
+            dismissButton = { TextButton(vm::dismissOfferDialog, enabled = !busy) { Text(cancelText) } }
+        )
+    }
+}
+
+@Composable
+private fun offerDisplayTitle(offer: Offer): String = when (offer.id) {
+    "coffee-break" -> stringResource(R.string.offer_coffee_break_title)
+    "weekend-essentials" -> stringResource(R.string.offer_weekend_essentials_title)
+    "next-chapter" -> stringResource(R.string.offer_next_chapter_title)
+    else -> offer.title
 }

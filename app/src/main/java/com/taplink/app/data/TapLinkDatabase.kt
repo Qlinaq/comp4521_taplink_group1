@@ -16,14 +16,15 @@ import com.taplink.app.data.auth.AuthDao
  * identity used to render localised notification text.
  * Version 5 gives every wallet row an owner, so the demo wallet and each account keep separate
  * cards, balances, history and messages in one database file.
+ * Version 6 separates per-wallet offer state from the shared demo catalogue.
  * All migrations are additive; the wallet domain models are unchanged.
  */
 @Database(
     entities = [CardEntity::class, MerchantEntity::class, TransactionEntity::class,
         PreferencesEntity::class, MessageEntity::class, LocationEntity::class,
-        PassEntity::class, OfferEntity::class, SubsidyClaimEntity::class, OperationEntity::class,
-        MetaEntity::class, AccountEntity::class, AuthCodeEntity::class],
-    version = 5, exportSchema = true
+        PassEntity::class, OfferEntity::class, OfferStateEntity::class, SubsidyClaimEntity::class,
+        OperationEntity::class, MetaEntity::class, AccountEntity::class, AuthCodeEntity::class],
+    version = 6, exportSchema = true
 )
 abstract class TapLinkDatabase : RoomDatabase() {
     abstract fun dao(): TapLinkDao
@@ -72,6 +73,20 @@ abstract class TapLinkDatabase : RoomDatabase() {
                 // Nullable: rows written before this version keep their stored English text.
                 db.execSQL("ALTER TABLE `messages` ADD COLUMN `kind` TEXT")
                 db.execSQL("ALTER TABLE `messages` ADD COLUMN `amountCents` INTEGER")
+            }
+        }
+
+        val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Previously shared state has no recorded owner. Keep it on disk without
+                // attaching it to any wallet. Each wallet starts its own offer history.
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS offer_states (" +
+                        "ownerId TEXT NOT NULL, offerId TEXT NOT NULL, isFavorite INTEGER NOT NULL, " +
+                        "redeemedAt INTEGER, couponCode TEXT, PRIMARY KEY(ownerId, offerId), " +
+                        "FOREIGN KEY(offerId) REFERENCES offers(id) ON UPDATE NO ACTION ON DELETE CASCADE)"
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_offer_states_offerId ON offer_states (offerId)")
             }
         }
 

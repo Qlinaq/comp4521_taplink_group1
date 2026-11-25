@@ -278,15 +278,15 @@ private class DelayedRepository : TapLinkRepository {
     override suspend fun getReceipt(operationId: String) = readReceipt(operationId)
     override suspend fun topUp(cardId: String, amountCents: Long, operationId: String): WalletResult<Receipt> { topUpIds += operationId; return performTopUp(cardId, amountCents, operationId) }
     override suspend fun createCard(name: String): WalletResult<Card> { createCalls++; return createResult?.await() ?: WalletResult.Success(cardA.copy(name = name)) }
-    override suspend fun redeemOffer(offerId: String): WalletResult<Offer> { redeemCalls++; return checkNotNull(redeemResult).await() }
+    override suspend fun redeemOffer(offerId: String, ownerId: String?): WalletResult<Offer> { redeemCalls++; return checkNotNull(redeemResult).await() }
     override fun observeTransactions(filter: TransactionFilter): Flow<List<WalletTransaction>> = transactions.map { WalletAnalytics.filter(it, filter) }
     override suspend fun renameCard(cardId: String, name: String): WalletResult<Unit> = error("Not used")
     override suspend fun setCardFrozen(cardId: String, frozen: Boolean): WalletResult<Unit> = error("Not used")
     override suspend fun pay(cardId: String, merchantId: String, amountCents: Long, operationId: String): WalletResult<Receipt> = error("Not used")
     override suspend fun buyPass(cardId: String, operationId: String): WalletResult<Receipt> = error("Not used")
-    override suspend fun markMessageRead(messageId: String): WalletResult<Unit> = error("Not used")
-    override suspend fun markAllMessagesRead(): WalletResult<Unit> = error("Not used")
-    override suspend fun setOfferFavorite(offerId: String, favorite: Boolean): WalletResult<Unit> = error("Not used")
+    override suspend fun markMessageRead(messageId: String, ownerId: String?): WalletResult<Unit> = error("Not used")
+    override suspend fun markAllMessagesRead(ownerId: String?): WalletResult<Unit> = error("Not used")
+    override suspend fun setOfferFavorite(offerId: String, favorite: Boolean, ownerId: String?): WalletResult<Unit> = error("Not used")
     override suspend fun claimSubsidy(cardId: String, month: String, operationId: String): WalletResult<Receipt> = error("Not used")
     override suspend fun refreshDemoContent(): WalletResult<Unit> = error("Not used")
     override suspend fun generateReminders(now: Long): WalletResult<Int> = error("Not used")

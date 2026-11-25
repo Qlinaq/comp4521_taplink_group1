@@ -50,10 +50,21 @@ class RoomTapLinkRepository(
     override val transactions = observe { o -> dao.observeTransactions(o).map { rows -> rows.map { it.value } } }
     override val merchants = observe { _ -> dao.observeMerchants().map { rows -> rows.map { it.value } } }
     override val locations = observe { _ -> dao.observeLocations().map { rows -> rows.map { it.value } } }
-    override val messages = observe { o -> dao.observeMessages(o).map { rows -> rows.map { it.value } } }
+    override val messages = observe(::messagesFor)
+    override fun observeMessages(ownerId: String): Flow<List<WalletMessage>> = observeFor(ownerId, ::messagesFor)
+
+    private fun messagesFor(ownerId: String): Flow<List<WalletMessage>> =
+        dao.observeMessages(ownerId).map { rows -> rows.map { it.value } }
     override val preferences = observe { _ -> dao.observePreferences().map { checkNotNull(it).value } }
     override val passes = observe { o -> dao.observePasses(o).map { rows -> rows.map { it.value } } }
-    override val offers = observe { _ -> dao.observeOffers().map { rows -> rows.map { it.value } } }
+    override val offers = observe(dao::observeOffers)
+
+    override fun observeOffers(ownerId: String): Flow<List<Offer>> = observeFor(ownerId, dao::observeOffers)
+
+    private fun <T> observeFor(ownerId: String, source: (String) -> Flow<T>): Flow<T> = flow {
+        initialize(ownerId)
+        emitAll(source(ownerId))
+    }.distinctUntilChanged()
     override val subsidyClaims = observe { o -> dao.observeSubsidyClaims(o).map { rows -> rows.map { it.value } } }
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -263,25 +274,32 @@ class RoomTapLinkRepository(
         operation.passId?.let { checkNotNull(dao.pass(it, owner)).value }
     )
 
-    override suspend fun markMessageRead(messageId: String): WalletResult<Unit> = mutate {
-        if (dao.markMessageRead(messageId, owner) == 0) fail(WalletError.NOT_FOUND, "This message could not be found.")
-    }
+    override suspend fun markMessageRead(messageId: String, ownerId: String?): WalletResult<Unit> =
+        mutateForOwner(ownerId) { currentOwner ->
+            if (dao.markMessageRead(messageId, currentOwner) == 0) fail(WalletError.NOT_FOUND, "This message could not be found.")
+        }
 
-    override suspend fun markAllMessagesRead(): WalletResult<Unit> = mutate { dao.markAllMessagesRead(owner) }
+    override suspend fun markAllMessagesRead(ownerId: String?): WalletResult<Unit> =
+        mutateForOwner(ownerId, dao::markAllMessagesRead)
 
-    override suspend fun setOfferFavorite(offerId: String, favorite: Boolean): WalletResult<Unit> = mutate {
-        val offer = requireOffer(offerId)
-        dao.updateOffer(OfferEntity(offer.copy(isFavorite = favorite)))
-    }
+    override suspend fun setOfferFavorite(offerId: String, favorite: Boolean, ownerId: String?): WalletResult<Unit> =
+        mutateForOwner(ownerId) { currentOwner ->
+            val offer = requireOffer(offerId, currentOwner)
+            dao.saveOfferState(OfferStateEntity(currentOwner, offerId, favorite, offer.redeemedAt, offer.couponCode))
+        }
 
-    override suspend fun redeemOffer(offerId: String): WalletResult<Offer> = mutate {
-        val offer = requireOffer(offerId)
+    override suspend fun redeemOffer(offerId: String, ownerId: String?): WalletResult<Offer> = mutateForOwner(ownerId) { currentOwner ->
+        val offer = requireOffer(offerId, currentOwner)
         if (offer.redeemedAt != null) fail(WalletError.ALREADY_REDEEMED, "This demo coupon has already been redeemed.")
         val now = clock()
         if (now >= offer.expiresAt) fail(WalletError.OFFER_EXPIRED, "This demo offer has expired.")
-        offer.copy(redeemedAt = now, couponCode = "DEMO-${newId().take(8).uppercase()}").also {
-            dao.updateOffer(OfferEntity(it))
-        }
+        val code = "DEMO-${newId().take(8).uppercase()}"
+        dao.saveOfferState(OfferStateEntity(currentOwner, offerId, offer.isFavorite, now, code))
+        dao.insertMessage(MessageEntity(WalletMessage(
+            newId(), "Demo coupon redeemed", "See the coupon code under Offers & rewards.",
+            MessageType.INFO, now, false, kind = MessageKind.OFFER_REDEEMED
+        ), currentOwner))
+        offer.copy(redeemedAt = now, couponCode = code)
     }
 
     override suspend fun claimSubsidy(cardId: String, month: String, operationId: String): WalletResult<Receipt> = mutate {
@@ -316,24 +334,24 @@ class RoomTapLinkRepository(
         if (currentPreferences().demoRefreshEnabled) SeedData.ensureCatalog(dao, clock())
     }
 
-    override suspend fun generateReminders(now: Long): WalletResult<Int> = mutate {
+    override suspend fun generateReminders(now: Long): WalletResult<Int> = mutateForOwner { currentOwner ->
         val prefs = currentPreferences()
-        if (!prefs.remindersEnabled || !prefs.expiryRemindersEnabled) return@mutate 0
+        if (!prefs.remindersEnabled || !prefs.expiryRemindersEnabled) return@mutateForOwner 0
         val horizon = 3L * 86_400_000L
         var count = 0
-        for (pass in dao.allPasses(owner).map { it.value }) {
+        for (pass in dao.allPasses(currentOwner).map { it.value }) {
             if (pass.validUntil > now && pass.validUntil - now <= horizon) {
                 val inserted = dao.insertMessage(MessageEntity(WalletMessage("pass-expiry:${pass.id}:${pass.validUntil}",
                     "Demo pass expires soon", "${pass.name} expires on ${Instant.ofEpochMilli(pass.validUntil).atZone(zone).toLocalDate()}.",
-                    MessageType.PASS_EXPIRY, now, false, pass.cardId, pass.transactionId, MessageKind.PASS_EXPIRY), owner))
+                    MessageType.PASS_EXPIRY, now, false, pass.cardId, pass.transactionId, MessageKind.PASS_EXPIRY), currentOwner))
                 if (inserted != -1L) count++
             }
         }
-        for (offer in dao.allOffers().map { it.value }) {
+        for (offer in dao.allOffers(currentOwner)) {
             if (offer.isFavorite && offer.redeemedAt == null && offer.expiresAt > now && offer.expiresAt - now <= horizon) {
-                val inserted = dao.insertMessage(MessageEntity(WalletMessage("offer-expiry:${offer.id}:${offer.expiresAt}",
+                val inserted = dao.insertMessage(MessageEntity(WalletMessage("offer-expiry:$currentOwner:${offer.id}:${offer.expiresAt}",
                     "Saved demo offer expires soon", "${offer.title} expires on ${Instant.ofEpochMilli(offer.expiresAt).atZone(zone).toLocalDate()}.",
-                    MessageType.OFFER_EXPIRY, now, false, kind = MessageKind.OFFER_EXPIRY), owner))
+                    MessageType.OFFER_EXPIRY, now, false, kind = MessageKind.OFFER_EXPIRY), currentOwner))
                 if (inserted != -1L) count++
             }
         }
@@ -346,14 +364,21 @@ class RoomTapLinkRepository(
     private suspend fun requireCard(id: String): Card = dao.card(id, owner)?.value
         ?: fail(WalletError.NOT_FOUND, "This card could not be found.")
 
-    private suspend fun requireOffer(id: String): Offer = dao.offer(id)?.value
+    private suspend fun requireOffer(id: String, ownerId: String): Offer = dao.offer(id, ownerId)
         ?: fail(WalletError.NOT_FOUND, "This demo offer could not be found.")
 
     private suspend fun currentPreferences(): AppPreferences = checkNotNull(dao.preferences()).value
 
-    private suspend fun <T> mutate(block: suspend () -> T): WalletResult<T> = withContext(Dispatchers.IO) {
+    private suspend fun <T> mutate(block: suspend () -> T): WalletResult<T> = mutate(owner, block)
+
+    private suspend fun <T> mutateForOwner(ownerId: String? = null, block: suspend (String) -> T): WalletResult<T> {
+        val currentOwner = ownerId ?: owner
+        return mutate(currentOwner) { block(currentOwner) }
+    }
+
+    private suspend fun <T> mutate(ownerId: String, block: suspend () -> T): WalletResult<T> = withContext(Dispatchers.IO) {
         try {
-            initialize()
+            initialize(ownerId)
             WalletResult.Success(database.withTransaction { block() })
         } catch (cancelled: CancellationException) {
             // This does not imply rollback: cancellation may discard a result after commit.

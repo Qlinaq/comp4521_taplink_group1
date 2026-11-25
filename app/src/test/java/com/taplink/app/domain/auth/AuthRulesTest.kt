@@ -81,6 +81,13 @@ class AuthRulesTest {
     }
 
     @Test
+    fun `password without symbols is valid when it omits the email local part`() {
+        val id = "78305421@example.test"
+        assertEquals(PasswordIssue.CONTAINS_IDENTIFIER, AuthRules.passwordProblem("Maple78305421", id))
+        assertNull(AuthRules.passwordProblem("Maple78305499", id))
+    }
+
+    @Test
     fun `short local part cannot trigger the identifier rule`() {
         assertNull(AuthRules.passwordProblem("Abcdefg1", "ab@ust.hk"))
     }

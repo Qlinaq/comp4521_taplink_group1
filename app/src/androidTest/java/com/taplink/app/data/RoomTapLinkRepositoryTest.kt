@@ -377,6 +377,68 @@ class RoomTapLinkRepositoryTest {
         assertError(WalletError.OFFER_EXPIRED, expiredRepository.redeemOffer(other.id))
     }
 
+    @Test fun offerStateMessagesAndExpiryRemindersStayWithTheirWallet() = runBlocking {
+        val offer = repository.offers.first().first()
+        val guestLedger = repository.transactions.first()
+        value(repository.setOfferFavorite(offer.id, true))
+        assertEquals(1, value(repository.generateReminders(now)))
+        val guestCoupon = value(repository.redeemOffer(offer.id))
+        assertError(WalletError.ALREADY_REDEEMED, repository.redeemOffer(offer.id))
+        assertEquals(guestLedger, repository.transactions.first())
+        assertEquals(1, repository.messages.first().count { it.kind == MessageKind.OFFER_REDEEMED && !it.isRead })
+
+        repository.useOwner("offer-test-account")
+        assertEquals(offer, repository.offers.first().single { it.id == offer.id })
+        assertFalse(repository.messages.first().any { it.kind == MessageKind.OFFER_REDEEMED || it.kind == MessageKind.OFFER_EXPIRY })
+        assertEquals(guestCoupon, repository.observeOffers(WalletOwner.GUEST).first().single { it.id == offer.id })
+        assertEquals(0, value(repository.generateReminders(now)))
+        value(repository.setOfferFavorite(offer.id, true))
+        assertEquals(1, value(repository.generateReminders(now)))
+        assertTrue(repository.transactions.first().isEmpty())
+
+        // A background component can change the default while this wallet is showing.
+        repository.useOwner(WalletOwner.GUEST)
+        val accountCoupon = value(repository.redeemOffer(offer.id, "offer-test-account"))
+        assertNotEquals(guestCoupon.couponCode, accountCoupon.couponCode)
+        assertEquals(1, repository.observeMessages("offer-test-account").first().count { it.kind == MessageKind.OFFER_REDEEMED })
+        value(repository.markAllMessagesRead("offer-test-account"))
+        assertEquals(guestCoupon, repository.offers.first().single { it.id == offer.id })
+        assertTrue(repository.messages.first().any { it.kind == MessageKind.OFFER_REDEEMED && !it.isRead })
+        repository.useOwner("offer-test-account")
+        assertEquals(accountCoupon, repository.offers.first().single { it.id == offer.id })
+        assertTrue(repository.messages.first().any { it.kind == MessageKind.OFFER_REDEEMED && it.isRead })
+    }
+
+    @Test fun guestOfferMessagesStayWithGuestWhenLegacyCardsAreAdopted() = runBlocking {
+        withContext(Dispatchers.IO) {
+            database.openHelper.writableDatabase.execSQL("DELETE FROM app_meta WHERE key = 'legacy-wallet-adopted'")
+        }
+        val offer = repository.offers.first().first()
+        value(repository.setOfferFavorite(offer.id, true))
+        assertEquals(1, value(repository.generateReminders(now)))
+        value(repository.redeemOffer(offer.id))
+
+        repository.useOwner("adopting-account")
+        assertEquals(3, repository.cards.first().size)
+        val offerMessages = setOf(MessageKind.OFFER_REDEEMED, MessageKind.OFFER_EXPIRY)
+        assertTrue(repository.messages.first().none { it.kind in offerMessages })
+        assertEquals(2, repository.observeMessages(WalletOwner.GUEST).first().count { it.kind in offerMessages })
+    }
+
+    @Test fun legacySharedOfferStateIsNeverShownInAWallet() = runBlocking {
+        val offer = repository.offers.first().first()
+        withContext(Dispatchers.IO) {
+            database.openHelper.writableDatabase.execSQL(
+                "UPDATE offers SET isFavorite = 1, redeemedAt = ?, couponCode = 'DEMO-LEGACY' WHERE id = ?",
+                arrayOf(now, offer.id)
+            )
+        }
+        assertEquals(offer, repository.offers.first().single { it.id == offer.id })
+        repository.useOwner("offer-test-account")
+        assertEquals(offer, repository.offers.first().single { it.id == offer.id })
+        assertNotEquals("DEMO-LEGACY", value(repository.redeemOffer(offer.id)).couponCode)
+    }
+
     @Test fun remindersArePreferenceAwareAndDeduplicated() = runBlocking {
         val offer = repository.offers.first().first()
         value(repository.setOfferFavorite(offer.id, true))

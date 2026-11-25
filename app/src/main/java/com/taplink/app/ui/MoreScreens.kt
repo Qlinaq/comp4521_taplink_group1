@@ -52,7 +52,7 @@ fun MessagesScreen(vm: WalletViewModel) {
         PageHeading( stringResource(R.string.ui_message_centre) , stringResource(R.string.ui_stay_in_the_loop) , stringResource(R.string.ui_wallet_updates_and_reminders_saved_in_the_ap) )
         VoiceSummary(stringResource(R.string.messages_voice_summary, messages.count { !it.isRead }))
         val markAllRead = stringResource(R.string.ui_all_messages_marked_read)
-        if (messages.any { !it.isRead }) TextButton({ vm.act(markAllRead, { vm.repository.markAllMessagesRead() }) }, enabled = !busy) { Text(stringResource(R.string.ui_mark_all_as_read)) }
+        if (messages.any { !it.isRead }) TextButton({ vm.markAllMessagesRead(markAllRead) }, enabled = !busy) { Text(stringResource(R.string.ui_mark_all_as_read)) }
         if (messages.isEmpty()) EmptyState( stringResource(R.string.ui_all_quiet_for_now) , stringResource(R.string.ui_new_wallet_updates_will_be_available_here_ev) , Icons.Outlined.NotificationsNone)
         messages.forEach { message -> Panel {
             Text(if (message.isRead) message.type.label() else stringResource(R.string.ui_new_chip, message.type.label()), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
@@ -61,7 +61,7 @@ fun MessagesScreen(vm: WalletViewModel) {
             Text(MessageCopy.body(context, message), style = MaterialTheme.typography.bodyMedium)
             Text("${dateTime(message.createdAt)} HKT", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (!message.isRead) TextButton({ vm.act(action = { vm.repository.markMessageRead(message.id) }) }, enabled = !busy) { Text(stringResource(R.string.ui_mark_read)) }
+                if (!message.isRead) TextButton({ vm.markMessageRead(message.id) }, enabled = !busy) { Text(stringResource(R.string.ui_mark_read)) }
                 transactions.find { it.id == message.transactionId }?.let { tx -> TextButton({ vm.openTransaction(tx) }, enabled = !busy) { Text(stringResource(R.string.ui_view_transaction)) } }
             }
         } }

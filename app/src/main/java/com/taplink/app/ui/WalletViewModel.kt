@@ -16,7 +16,7 @@ import java.util.UUID
 class WalletViewModel(
     val repository: TapLinkRepository,
     private val saved: SavedStateHandle,
-    ownerId: String = WalletOwner.GUEST
+    private val ownerId: String = WalletOwner.GUEST
 ) : ViewModel() {
     /**
      * Declared before the flows below: property initialisers and init blocks run in source order, so
@@ -31,8 +31,8 @@ class WalletViewModel(
     val merchants = repository.merchants.stateIn(viewModelScope, sharing, emptyList())
     val locations = repository.locations.stateIn(viewModelScope, sharing, emptyList())
     val preferences = repository.preferences.stateIn(viewModelScope, sharing, AppPreferences())
-    val messages = repository.messages.stateIn(viewModelScope, sharing, emptyList())
-    val offers = repository.offers.stateIn(viewModelScope, sharing, emptyList())
+    val messages = repository.observeMessages(ownerId).stateIn(viewModelScope, sharing, emptyList())
+    val offers = repository.observeOffers(ownerId).stateIn(viewModelScope, sharing, emptyList())
     val passes = repository.passes.stateIn(viewModelScope, sharing, emptyList())
     val claims = repository.subsidyClaims.stateIn(viewModelScope, sharing, emptyList())
     val route = saved.getStateFlow("route", "Home")
@@ -290,6 +290,12 @@ class WalletViewModel(
             "freeze", "unfreeze" -> act("Card updated", { repository.setCardFrozen(target, action == "freeze") }) { closeCurrent() }
         }
     }
+    fun markMessageRead(messageId: String) = act(action = { repository.markMessageRead(messageId, ownerId) })
+
+    fun markAllMessagesRead(feedback: String) = act(feedback, { repository.markAllMessagesRead(ownerId) })
+
+    fun toggleOfferFavorite(offer: Offer) = act(action = { repository.setOfferFavorite(offer.id, !offer.isFavorite, ownerId) })
+
     fun openOfferDialog(offerId: String) {
         if (busy.value) return
         set("offerDialogToken", UUID.randomUUID().toString())
@@ -300,7 +306,7 @@ class WalletViewModel(
         if (busy.value) return
         val id = offerDialog.value.takeIf { it.isNotBlank() } ?: return
         val token = value("offerDialogToken")
-        act("Demo coupon redeemed", { repository.redeemOffer(id) }) {
+        act("Demo coupon redeemed", { repository.redeemOffer(id, ownerId) }) {
             if (value("offerDialogToken") == token) { set("offerDialog", ""); set("offerDialogToken", "") }
         }
     }

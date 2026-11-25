@@ -40,7 +40,7 @@ internal object SeedData {
     suspend fun ensureCatalog(dao: TapLinkDao, now: Long) {
         dao.insertMerchants(merchants.map(::MerchantEntity))
         dao.insertLocations(locations.map(::LocationEntity))
-        // IGNORE preserves original expiry dates, favorites, and redeemed coupons on refresh.
+        // IGNORE preserves original catalogue expiry dates on refresh.
         dao.insertOffers(listOf(
             Offer("coffee-break", "campus-cafe", "A little coffee break", "Save HK$8 on a demo cafe order.",
                 "Demo coupon only. One redemption. No cash value or real merchant acceptance.", now + 2 * DAY),

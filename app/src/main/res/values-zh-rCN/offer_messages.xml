@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="offer_demo_heading">演示优惠券</string>
+    <string name="offer_demo_intro">演示优惠券没有现金价值，结账时不会减免付款金额。</string>
+    <string name="offer_demo_card">仅供演示 · 结账无折扣</string>
+    <string name="offer_demo_terms">到期前仅可兑换一次。此演示优惠券没有现金价值，结账时不提供折扣，商户也不接受使用。</string>
+    <string name="offer_coffee_break_title">咖啡小憩</string>
+    <string name="offer_weekend_essentials_title">周末必需品</string>
+    <string name="offer_next_chapter_title">翻开新一页</string>
+    <string name="msg_offer_redeemed_body">请前往「更多 → 优惠与奖励」，在对应的优惠卡片上查看优惠券代码。</string>
+</resources>

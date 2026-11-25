@@ -5,7 +5,14 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
+import androidx.room.Upsert
+import com.taplink.app.domain.Offer
 import kotlinx.coroutines.flow.Flow
+
+private const val OFFERS_FOR_OWNER =
+    "SELECT o.id, o.merchantId, o.title, o.description, o.terms, o.expiresAt, " +
+        "COALESCE(s.isFavorite, 0) AS isFavorite, s.redeemedAt, s.couponCode " +
+        "FROM offers o LEFT JOIN offer_states s ON s.offerId = o.id AND s.ownerId = :owner"
 
 /**
  * Every wallet query takes an owner so one installation can hold the demo wallet and one wallet per
@@ -40,8 +47,8 @@ interface TapLinkDao {
     @Query("SELECT * FROM passes WHERE ownerId = :owner ORDER BY validFrom DESC, id DESC")
     fun observePasses(owner: String): Flow<List<PassEntity>>
 
-    @Query("SELECT * FROM offers ORDER BY expiresAt, id")
-    fun observeOffers(): Flow<List<OfferEntity>>
+    @Query(OFFERS_FOR_OWNER + " ORDER BY o.expiresAt, o.id")
+    fun observeOffers(owner: String): Flow<List<Offer>>
 
     @Query("SELECT * FROM subsidy_claims WHERE ownerId = :owner ORDER BY claimedAt DESC, id DESC")
     fun observeSubsidyClaims(owner: String): Flow<List<SubsidyClaimEntity>>
@@ -79,11 +86,11 @@ interface TapLinkDao {
     @Query("SELECT * FROM passes WHERE ownerId = :owner AND cardId = :cardId AND validFrom <= :now AND validUntil > :now LIMIT 1")
     suspend fun activePass(cardId: String, now: Long, owner: String): PassEntity?
 
-    @Query("SELECT * FROM offers WHERE id = :id")
-    suspend fun offer(id: String): OfferEntity?
+    @Query(OFFERS_FOR_OWNER + " WHERE o.id = :id")
+    suspend fun offer(id: String, owner: String): Offer?
 
-    @Query("SELECT * FROM offers")
-    suspend fun allOffers(): List<OfferEntity>
+    @Query(OFFERS_FOR_OWNER)
+    suspend fun allOffers(owner: String): List<Offer>
 
     @Query("SELECT * FROM subsidy_claims WHERE ownerId = :owner AND cardId = :cardId AND month = :month LIMIT 1")
     suspend fun claim(cardId: String, month: String, owner: String): SubsidyClaimEntity?
@@ -106,7 +113,7 @@ interface TapLinkDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE) suspend fun insertLocations(locations: List<LocationEntity>)
     @Insert(onConflict = OnConflictStrategy.IGNORE) suspend fun insertOffers(offers: List<OfferEntity>)
     @Insert(onConflict = OnConflictStrategy.IGNORE) suspend fun insertMessage(message: MessageEntity): Long
-    @Update suspend fun updateOffer(offer: OfferEntity)
+    @Upsert suspend fun saveOfferState(state: OfferStateEntity)
 
     @Query("UPDATE messages SET isRead = 1 WHERE id = :id AND ownerId = :owner")
     suspend fun markMessageRead(id: String, owner: String): Int
@@ -122,7 +129,11 @@ interface TapLinkDao {
     @Query("UPDATE transactions SET ownerId = :owner WHERE ownerId = :from")
     suspend fun adoptTransactions(owner: String, from: String)
 
-    @Query("UPDATE messages SET ownerId = :owner WHERE ownerId = :from")
+    // Offer messages belong to the original wallet even when earlier wallet rows are adopted.
+    @Query(
+        "UPDATE messages SET ownerId = :owner WHERE ownerId = :from " +
+            "AND (kind IS NULL OR kind NOT IN ('OFFER_REDEEMED', 'OFFER_EXPIRY'))"
+    )
     suspend fun adoptMessages(owner: String, from: String)
 
     @Query("UPDATE passes SET ownerId = :owner WHERE ownerId = :from")

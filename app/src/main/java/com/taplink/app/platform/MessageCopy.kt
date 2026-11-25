@@ -23,6 +23,7 @@ object MessageCopy {
         MessageKind.PASS_PURCHASE -> resources.getString(R.string.msg_pass_purchase_title)
         MessageKind.PASS_EXPIRY -> resources.getString(R.string.msg_pass_expiry_title)
         MessageKind.OFFER_EXPIRY -> resources.getString(R.string.msg_offer_expiry_title)
+        MessageKind.OFFER_REDEEMED -> resources.getString(R.string.msg_coupon_redeemed)
         MessageKind.SERVICE -> resources.getString(R.string.msg_service_title)
         null -> message.title
     }
@@ -43,6 +44,7 @@ object MessageCopy {
             MessageKind.PASS_PURCHASE -> if (amount != null) {
                 resources.getString(R.string.msg_pass_purchase_body, amount)
             } else message.body
+            MessageKind.OFFER_REDEEMED -> resources.getString(R.string.msg_offer_redeemed_body)
             // The stored body contains the computed expiry date; translating it would drop that.
             MessageKind.PASS_EXPIRY, MessageKind.OFFER_EXPIRY, MessageKind.SERVICE, null -> message.body
         }
